@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نموذج فحص أنظمة مكافحة الحريق</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --green:#1f6f43;--green-dark:#144d2e;--amber:#c98a1c;--red:#b93a3a;
+    --bg:#f4f6f5;--card:#ffffff;--border:#d7ddda;--text:#20302a;--muted:#647a70;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:"Tahoma","Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);padding:16px;}
+
+  /* ===== SHARED ===== */
+  .wrap{max-width:800px;margin:0 auto;}
+  .app-header{
+    background:linear-gradient(135deg,var(--green),var(--green-dark));
+    color:#fff;border-radius:14px;padding:18px 20px;margin-bottom:16px;
+    box-shadow:0 2px 10px rgba(0,0,0,.12);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  }
+  .app-header h1{font-size:18px;margin:0;}
+  .app-header p{font-size:12px;opacity:.85;margin-top:3px;}
+  .header-left{flex:1;}
+  .btn-admin{
+    background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.5);
+    color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;
+    font-family:inherit;transition:background .2s;white-space:nowrap;
+  }
+  .btn-admin:hover{background:rgba(255,255,255,.3);}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+  .search-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .search-row input{flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fbfcfb;font-family:inherit;}
+  .search-row button{padding:10px 16px;border:none;border-radius:8px;background:var(--green);color:#fff;font-size:14px;cursor:pointer;font-family:inherit;}
+  .suggest-list{margin-top:8px;max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:8px;display:none;background:#fff;}
+  .suggest-item{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee;}
+  .suggest-item:hover{background:#f0f5f2;}
+  .suggest-item b{color:var(--green-dark);}
+  .no-item{color:var(--muted);font-size:13px;text-align:center;padding:10px 0;}
+  table.info-table{width:100%;border-collapse:collapse;font-size:13px;}
+  table.info-table td{padding:6px 8px;border:1px solid var(--border);}
+  table.info-table td.label{background:#eef4f1;font-weight:bold;width:34%;color:var(--green-dark);}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:bold;background:var(--green);color:#fff;}
+  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
+  .meta-grid label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .meta-grid input{width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;}
+  table.checklist{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+  table.checklist thead th{background:var(--green-dark);color:#fff;padding:8px 6px;text-align:right;font-size:12.5px;}
+  table.checklist td{border:1px solid var(--border);padding:6px;vertical-align:middle;}
+  table.checklist tbody tr:nth-child(even){background:#f7faf8;}
+  .item-no{text-align:center;color:var(--muted);width:26px;}
+  select.status-select{width:100%;padding:5px;border-radius:6px;border:1px solid var(--border);font-size:12.5px;font-family:inherit;}
+  select.status-select[data-val="سليم"]{background:#eaf6ee;color:var(--green-dark);font-weight:bold;}
+  select.status-select[data-val="يحتاج صيانة"]{background:#fdf3e0;color:var(--amber);font-weight:bold;}
+  select.status-select[data-val="غير مطابق"]{background:#fbe9e9;color:var(--red);font-weight:bold;}
+  .note-input{width:100%;padding:5px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;}
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .actions button{flex:1;min-width:140px;padding:12px;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold;font-family:inherit;}
+  .btn-export{background:var(--green);color:#fff;}
+  .btn-print{background:#fff;color:var(--green-dark);border:1.5px solid var(--green)!important;}
+  .footer-note{font-size:11.5px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.7;}
+  @media print{.search-row,.actions,.footer-note,.app-header p,.btn-admin{display:none!important;}body{padding:0;background:#fff;}}
+
+  /* ===== ADMIN ===== */
+  #adminPage{display:none;}
+  .admin-wrap{max-width:900px;margin:0 auto;}
+  .admin-header{
+    background:linear-gradient(135deg,var(--green-dark),#0d3320);
+    color:#fff;border-radius:14px;padding:16px 20px;margin-bottom:16px;
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  }
+  .admin-header h1{font-size:17px;}
+  .admin-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+  .tab-btn{
+    padding:9px 18px;border:1.5px solid var(--border);border-radius:8px;
+    background:#fff;color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;
+  }
+  .tab-btn.active{background:var(--green);color:#fff;border-color:var(--green);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  /* Login */
+  .login-box{max-width:360px;margin:60px auto;background:#fff;border-radius:14px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,.1);text-align:center;}
+  .login-box h2{color:var(--green-dark);margin-bottom:20px;font-size:18px;}
+  .login-box input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;font-family:inherit;text-align:center;}
+  .login-box button{width:100%;padding:11px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;font-family:inherit;font-weight:bold;}
+  .login-err{color:var(--red);font-size:13px;margin-top:8px;}
+
+  /* Items table */
+  .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+  .toolbar input{flex:1;min-width:180px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
+  .btn-green{background:var(--green);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:bold;}
+  .btn-red{background:var(--red);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;}
+  .btn-amber{background:var(--amber);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;}
+  .btn-outline{background:#fff;color:var(--green-dark);border:1.5px solid var(--green);padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;}
+  .admin-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+  table.admin-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.admin-table thead th{background:var(--green-dark);color:#fff;padding:9px 8px;text-align:right;white-space:nowrap;}
+  table.admin-table tbody tr:nth-child(even){background:#f7faf8;}
+  table.admin-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  .pagination{display:flex;gap:6px;margin-top:12px;align-items:center;flex-wrap:wrap;}
+  .pagination button{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;font-family:inherit;}
+  .pagination button.active{background:var(--green);color:#fff;border-color:var(--green);}
+  .pagination span{font-size:12px;color:var(--muted);}
+
+  /* Modal */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;padding:16px;}
+  .modal-overlay.open{display:flex;}
+  .modal-box{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
+  .modal-box h3{color:var(--green-dark);margin-bottom:16px;font-size:16px;}
+  .form-row{margin-bottom:12px;}
+  .form-row label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:bold;}
+  .form-row input,.form-row select,.form-row textarea{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
+  .form-row textarea{resize:vertical;min-height:70px;}
+  .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
+
+  /* Checklist editor */
+  .checklist-type-select{margin-bottom:14px;}
+  .checklist-type-select select{padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;width:100%;}
+  .cl-item-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+  .cl-item-row input{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;}
+  .cl-item-row button{flex-shrink:0;}
+  .add-cl-row{display:flex;gap:6px;margin-top:8px;}
+  .add-cl-row input{flex:1;padding:8px 10px;border:1.5px dashed var(--border);border-radius:7px;font-size:13px;font-family:inherit;}
+
+  /* Settings */
+  .settings-section{margin-bottom:20px;}
+  .settings-section h3{font-size:14px;color:var(--green-dark);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+  .settings-section input{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:8px;}
+  .danger-zone{background:#fff5f5;border:1.5px solid #f5c6c6;border-radius:10px;padding:14px;}
+  .danger-zone p{font-size:12.5px;color:var(--red);margin-bottom:10px;}
+
+  .count-badge{display:inline-block;background:#e8f4ee;color:var(--green-dark);border-radius:12px;padding:2px 8px;font-size:11px;font-weight:bold;margin-right:6px;}
+  .type-cat-pill{display:inline-block;background:#eef4f1;color:var(--green-dark);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;}
+  .type-count{display:inline-block;background:#fdf3e0;color:var(--amber);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;}
+  /* ===== Statistics ===== */
+  .stats-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px;}
+  .stat-kpi{background:#fff;border:1px solid #e3e9e5;border-radius:14px;padding:18px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .stat-kpi .kpi-label{font-size:12px;color:#6b7a72;font-weight:600;margin-bottom:6px;}
+  .stat-kpi .kpi-value{font-size:30px;font-weight:800;color:var(--green-dark);line-height:1;}
+  .stat-kpi .kpi-sub{font-size:11px;color:#8a9a92;margin-top:6px;}
+  .stat-kpi.kpi-pass .kpi-value{color:var(--green);}
+  .stat-kpi.kpi-fail .kpi-value{color:var(--red);}
+  .stat-kpi.kpi-warn .kpi-value{color:var(--amber);}
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+  .stats-grid .full{grid-column:1/-1;}
+  .stat-card{background:#fff;border:1px solid #e3e9e5;border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .stat-card h4{margin:0 0 14px;font-size:14px;color:var(--green-dark);display:flex;align-items:center;gap:8px;}
+  .stat-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .stat-bar-row .bar-label{width:150px;font-size:12px;color:#44534c;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .stat-bar-row .bar-track{flex:1;height:10px;background:#eef2ef;border-radius:6px;overflow:hidden;}
+  .stat-bar-row .bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--green),#2f9e63);transition:width .6s ease;}
+  .stat-bar-row .bar-count{width:40px;text-align:left;font-size:12px;font-weight:700;color:#44534c;}
+  .stat-result-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:10px;margin-bottom:8px;font-size:13px;font-weight:600;}
+  .stat-result-row .r-count{font-size:18px;font-weight:800;}
+  .stat-result-row.r-pass{background:#e8f4ee;color:var(--green-dark);}
+  .stat-result-row.r-fail{background:#fbeaea;color:var(--red);}
+  .stat-result-row.r-warn{background:#fdf3e0;color:var(--amber);}
+  .stat-empty{text-align:center;color:#8a9a92;font-size:13px;padding:30px 10px;}
+  @media(max-width:760px){.stats-grid{grid-template-columns:1fr;}}
+
+  /* ===== Records filter bar ===== */
+  .filter-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;background:#f7faf8;border:1px solid var(--border);border-radius:10px;padding:10px;}
+  .filter-bar select,.filter-bar input[type="date"]{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text);}
+  .filter-bar select{min-width:130px;}
+  .filter-bar input[type="date"]{min-width:130px;}
+  .filter-sep{font-size:12px;color:var(--muted);}
+  .btn-sm{padding:6px 12px;font-size:12px;}
+</style>
+</head>
+<body>
+
+<!-- ===== INSPECTION PAGE ===== -->
+<div id="inspectPage">
+<div class="wrap">
+  <div class="app-header">
+    <div class="header-left">
+      <h1>🧯 نموذج فحص أنظمة مكافحة الحريق</h1>
+      <p>افتح الرابط عن طريق مسح QR الملصق على الطفاية / الصندوق ليتم تحميل بياناته تلقائيًا</p>
+    </div>
+    <button class="btn-admin" onclick="goAdmin()">⚙️ لوحة الإدارة</button>
+  </div>
+
+  <div class="card">
+    <div class="search-row">
+      <input id="codeInput" placeholder="اكتب أو امسح الكود (مثال: AFI-P-001)" autocomplete="off">
+      <button onclick="loadByInput()">تحميل</button>
+    </div>
+    <div id="suggestList" class="suggest-list"></div>
+  </div>
+
+  <div id="noItem" class="no-item" style="padding:20px 0;">لسه محددتش عنصر. اكتب كود وابدأ، أو امسح QR الملصق فيتحدد الكود تلقائيًا من رابط الصفحة.</div>
+
+  <div id="itemArea" style="display:none;">
+    <div class="card">
+      <table class="info-table">
+        <tr><td class="label">الكود</td><td id="infoCode" style="font-weight:bold;"></td></tr>
+        <tr><td class="label">النوع</td><td id="infoType"></td></tr>
+        <tr><td class="label">الموقع / المنطقة</td><td id="infoFacility"></td></tr>
+        <tr><td class="label">القسم</td><td id="infoSection"></td></tr>
+        <tr><td class="label">المكان بالتفصيل</td><td id="infoLocation"></td></tr>
+        <tr><td class="label">الوزن</td><td id="infoWeight"></td></tr>
+        <tr><td class="label">رقم الصندوق</td><td id="infoBox"></td></tr>
+        <tr><td class="label">ملاحظات سابقة</td><td id="infoNotes"></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="meta-grid">
+        <div><label>اسم الفاحص</label><input id="inspectorName" placeholder="اسم المهندس/الفني"></div>
+        <div><label>تاريخ الفحص</label><input id="inspectDate" type="date"></div>
+      </div>
+    </div>
+    <div class="card">
+      <table class="checklist">
+        <thead><tr><th style="width:26px;">م</th><th>بند الفحص</th><th style="width:120px;">الحالة</th><th>ملاحظة</th></tr></thead>
+        <tbody id="checklistBody"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">ملاحظات عامة على الفحص</label>
+      <textarea id="generalNotes" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;"></textarea>
+    </div>
+    <div class="actions">
+      <button class="btn-export" onclick="saveInspection()">💾 حفظ نتيجة الفحص</button>
+      <button class="btn-export" onclick="exportExcel()">⬇️ تصدير نتيجة الفحص Excel</button>
+      <button class="btn-print" onclick="window.print()">🖨️ طباعة</button>
+    </div>
+    <div id="saveMsg" style="font-size:13px;margin-top:10px;text-align:center;display:none;"></div>
+  </div>
+  <div class="footer-note">نموذج فحص أنظمة مكافحة الحريق — AFI & AI Buildings</div>
+</div>
+</div>
+
+<!-- ===== ADMIN PAGE ===== -->
+<div id="adminPage">
+
+  <!-- Login Screen -->
+  <div id="adminLogin">
+    <div class="login-box">
+      <div style="font-size:36px;margin-bottom:8px;">🔐</div>
+      <h2>لوحة إدارة نظام الفحص</h2>
+      <input type="password" id="pwInput" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter')doLogin()">
+      <button onclick="doLogin()">دخول</button>
+      <div class="login-err" id="loginErr"></div>
+      <div style="margin-top:14px;"><button class="btn-outline" onclick="goInspect()" style="width:100%;">← العودة للنموذج</button></div>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="adminDash" style="display:none;">
+    <div class="admin-wrap">
+      <div class="admin-header">
+        <div>
+          <h1>⚙️ لوحة إدارة نظام الفحص</h1>
+          <div style="font-size:12px;opacity:.8;margin-top:3px;">إدارة العناصر وقوائم الفحص والإعدادات</div>
+        </div>
+        <button class="btn-admin" onclick="goInspect()">← العودة للنموذج</button>
+      </div>
+
+      <div class="admin-tabs">
+        <button class="tab-btn active" onclick="switchTab('items')">📋 العناصر <span class="count-badge" id="itemsCount">0</span></button>
+        <button class="tab-btn" onclick="switchTab('records')">📋 سجل الفحوصات <span class="count-badge" id="recordsCount">0</span></button>
+        <button class="tab-btn" onclick="switchTab('stats')">📊 الإحصائيات</button>
+        <button class="tab-btn" onclick="switchTab('types')">🏷️ أنواع الأنظمة</button>
+        <button class="tab-btn" onclick="switchTab('checklists')">✅ قوائم الفحص</button>
+        <button class="tab-btn" onclick="switchTab('settings')">🔧 الإعدادات</button>
+      </div>
+
+      <!-- TAB: Items -->
+      <div class="tab-panel active" id="tab-items">
+        <div class="card">
+          <div class="toolbar">
+            <input id="itemSearch" placeholder="بحث بالكود أو الموقع أو النوع..." oninput="renderItemsTable()">
+            <button class="btn-green" onclick="openAddItem()">+ إضافة عنصر جديد</button>
+            <button class="btn-outline" onclick="exportItemsExcel()">⬇️ تصدير Excel</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>الكود</th><th>النوع</th><th>الموقع/المنطقة</th><th>القسم</th><th>المكان</th><th>الوزن</th><th>ملاحظات</th><th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="itemsTableBody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="itemsPagination"></div>
+        </div>
+      </div>
+
+      <!-- TAB: Inspection Records -->
+      <div class="tab-panel" id="tab-records">
+        <div class="card">
+          <div class="toolbar">
+            <input id="recordSearch" placeholder="بحث بالكود أو اسم الفاحص..." oninput="renderRecordsTable()">
+            <button class="btn-outline" onclick="exportRecordsExcel()">⬇️ تصدير Excel</button>
+            <button class="btn-red" onclick="clearAllRecords()">🗑️ مسح الكل</button>
+          </div>
+          <div class="filter-bar">
+            <select id="filterStatus" onchange="renderRecordsTable()">
+              <option value="">كل النتائج</option>
+              <option value="pass">سليمة بالكامل</option>
+              <option value="warn">تحتاج صيانة</option>
+              <option value="fail">غير مطابقة</option>
+            </select>
+            <select id="filterFacility" onchange="renderRecordsTable()">
+              <option value="">كل المواقع</option>
+            </select>
+            <select id="filterType" onchange="renderRecordsTable()">
+              <option value="">كل الأنظمة</option>
+            </select>
+            <input type="date" id="filterFrom" onchange="renderRecordsTable()" title="من تاريخ">
+            <span class="filter-sep">إلى</span>
+            <input type="date" id="filterTo" onchange="renderRecordsTable()" title="إلى تاريخ">
+            <button class="btn-outline btn-sm" onclick="resetRecordFilters()">↺ إعادة تعيين</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>الكود</th><th>النوع</th><th>الموقع</th><th>الفاحص</th><th>التاريخ</th><th>النتيجة</th><th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="recordsTableBody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="recordsPagination"></div>
+        </div>
+      </div>
+
+      <!-- TAB: Statistics -->
+      <div class="tab-panel" id="tab-stats">
+        <div class="stats-kpis" id="statsKpis"></div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h4>📈 الفحوصات حسب نوع النظام</h4>
+            <div id="statsByType"></div>
+          </div>
+          <div class="stat-card">
+            <h4>🏢 الفحوصات حسب الموقع</h4>
+            <div id="statsByLocation"></div>
+          </div>
+          <div class="stat-card full">
+            <h4>✅ نتائج الفحوصات</h4>
+            <div id="statsByResult"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: System Types -->
+      <div class="tab-panel" id="tab-types">
+        <div class="card">
+          <div class="toolbar">
+            <button class="btn-green" onclick="openAddType()">+ إضافة نوع نظام</button>
+            <button class="btn-outline" onclick="resetTypes()">↩️ استعادة الافتراضي</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>اسم النوع</th><th>فئة الفحص</th><th>عدد العناصر</th><th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="typesTableBody"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:var(--muted);">
+            💡 فئة الفحص تحدد قائمة بنود الفحص التي تظهر عند فحص عنصر من هذا النوع. يمكنك إضافة أنواع جديدة أو تعديل ربطها بالفئات.
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Checklists -->
+      <div class="tab-panel" id="tab-checklists">
+        <div class="card">
+          <div class="checklist-type-select">
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;font-weight:bold;">اختر نوع النظام لتعديل قائمة الفحص الخاصة به:</label>
+            <select id="clTypeSelect" onchange="renderChecklistEditor()">
+              <option value="powder">طفاية بودرة</option>
+              <option value="co2">طفاية CO2</option>
+              <option value="foam">طفاية رغوي</option>
+              <option value="fire_shield">نظام فاير شيلد (مطابخ)</option>
+              <option value="hose_box">صندوق حريق / خرطوم</option>
+              <option value="fire_search">نظام فاير سيرش (كاشف شرر)</option>
+              <option value="general">عنصر عام</option>
+            </select>
+          </div>
+          <div id="clEditorArea"></div>
+          <div style="margin-top:14px;display:flex;gap:8px;">
+            <button class="btn-green" onclick="saveChecklist()">💾 حفظ قائمة الفحص</button>
+            <button class="btn-outline" onclick="resetChecklist()">↩️ استعادة الافتراضي</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Settings -->
+      <div class="tab-panel" id="tab-settings">
+        <div class="card">
+          <div class="settings-section">
+            <h3>🔑 تغيير كلمة المرور</h3>
+            <input type="password" id="newPw1" placeholder="كلمة المرور الجديدة">
+            <input type="password" id="newPw2" placeholder="تأكيد كلمة المرور الجديدة">
+            <button class="btn-green" onclick="changePassword()">تغيير كلمة المرور</button>
+            <div id="pwMsg" style="font-size:13px;margin-top:8px;"></div>
+          </div>
+          <div class="settings-section">
+            <h3>📤 تصدير واستيراد البيانات</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn-outline" onclick="exportJSON()">⬇️ تصدير JSON</button>
+              <label class="btn-outline" style="cursor:pointer;">
+                📂 استيراد JSON
+                <input type="file" accept=".json" style="display:none;" onchange="importJSON(this)">
+              </label>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h3 style="color:var(--red);">⚠️ منطقة الخطر</h3>
+            <div class="danger-zone">
+              <p>إعادة تعيين جميع البيانات للقيم الافتراضية — لا يمكن التراجع عن هذا الإجراء.</p>
+              <button class="btn-red" onclick="resetAllData()">🗑️ إعادة تعيين كل البيانات</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===== ITEM MODAL ===== -->
+<div class="modal-overlay" id="itemModal">
+  <div class="modal-box">
+    <h3 id="modalTitle">إضافة عنصر جديد</h3>
+    <div class="form-row"><label>الكود *</label><input id="fCode" placeholder="مثال: AFI-P-300"></div>
+    <div class="form-row"><label>النوع *</label>
+      <select id="fType">
+        <option value="بودرة">بودرة</option>
+        <option value="Co2">Co2</option>
+        <option value="رغوي">رغوي</option>
+        <option value="فاير شيلد">فاير شيلد</option>
+        <option value="صندوق حريق">صندوق حريق</option>
+        <option value="فاير سيرش Co2">فاير سيرش Co2</option>
+        <option value="أخرى">أخرى</option>
+      </select>
+    </div>
+    <div class="form-row"><label>الموقع / المنطقة</label>
+      <select id="fFacility">
+        <option value="الموقع الرئيسي (AFI)">الموقع الرئيسي (AFI)</option>
+        <option value="مباني D,C,E (AI)">مباني D,C,E (AI)</option>
+        <option value="موقع آخر">موقع آخر</option>
+      </select>
+    </div>
+    <div class="form-row"><label>الورقة / المنطقة الفرعية</label><input id="fSheet" placeholder="مثال: البوابات والشحن"></div>
+    <div class="form-row"><label>القسم</label><input id="fSection" placeholder="مثال: البوابة الرئيسية"></div>
+    <div class="form-row"><label>المكان بالتفصيل</label><input id="fLocation" placeholder="مثال: داخل مكتب الشحن"></div>
+    <div class="form-row"><label>الوزن</label><input id="fWeight" placeholder="مثال: 6كجم"></div>
+    <div class="form-row"><label>رقم الصندوق</label><input id="fBoxNo" placeholder="اختياري"></div>
+    <div class="form-row"><label>ملاحظات</label><textarea id="fNotes" placeholder="أي ملاحظات على العنصر..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn-green" onclick="saveItem()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TYPE MODAL ===== -->
+<div class="modal-overlay" id="typeModal">
+  <div class="modal-box">
+    <h3 id="typeModalTitle">إضافة نوع نظام</h3>
+    <div class="form-row"><label>اسم النوع *</label><input id="tfName" placeholder="مثال: طفاية بودرة"></div>
+    <div class="form-row"><label>فئة الفحص (تحدد قائمة البنود التي تظهر)</label>
+      <select id="tfCategory">
+        <option value="powder">طفاية بودرة</option>
+        <option value="co2">طفاية CO2</option>
+        <option value="foam">طفاية رغوي</option>
+        <option value="fire_shield">نظام فاير شيلد (مطابخ)</option>
+        <option value="hose_box">صندوق حريق / خرطوم</option>
+        <option value="fire_search">نظام فاير سيرش (كاشف شرر)</option>
+        <option value="general">عنصر عام</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeTypeModal()">إلغاء</button>
+      <button class="btn-green" onclick="saveType()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== DEFAULT DATA =====================
+const DEFAULT_DATA = [{"code": "AFI-P-001", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "الشحن/البوابة الرئيسية", "location": "داخل مكتب الشحن", "box_no": "", "notes": "تحتاج الي تعليق لانها متروكة علي الارض", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-002", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "البوابة الرئيسية", "location": "داخل البوفية", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-003", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "البوابة الرئيسية", "location": "امام مكتب الشحن ومكتب مدير الامن", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-004", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "البوابة الرئيسية", "location": "امام مكتب الشحن ومكتب مدير الامن", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-005", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "البوابة الرئيسية", "location": "بجوار باب دخول وخروج الافراد", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-006", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "البوابة الرئيسية", "location": "بجوار باب دخول الافراد الي المصنع", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-007", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "بوابة الامن الجديدة", "location": "داخل غرفة الامن", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-008", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "بوابة الامن الجديدة", "location": "داخل غرفة الامن", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-009", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "بوابة الامن الجديدة", "location": "داخل صندوق الحريق خارج البوابة الجديدة", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-010", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "بوابة الامن الجديدة", "location": "داخل صندوق الحريق خارج البوابة الجديدة", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-C-001", "sheet": "البوابات والشحن", "type": "Co2", "weight": "6كجم", "section": "البوابة الرئيسية", "location": "بجوار باب دخول الافراد الي المصنع", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-014", "sheet": "مبنى والعيادة  H.R", "type": "بودرة", "weight": "6كجم", "section": "العيادة", "location": "العيادة بجوار باب العيادة", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-015", "sheet": "مبنى والعيادة  H.R", "type": "بودرة", "weight": "6كجم", "section": "H.R", "location": "مدخل الريسبشن", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-019", "sheet": "المطبخ", "type": "بودرة", "weight": "6كجم", "section": "المطبخ", "location": "كافتيريا الصناعات", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-F-001", "sheet": "المطبخ", "type": "فاير شيلد", "weight": "9لتر", "section": "المطبخ", "location": "منطقة الافران", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-031", "sheet": "محطات الغاز الطبيعي والموازين", "type": "بودرة", "weight": "6كجم", "section": "الميزان", "location": "الميزان القديم", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-037", "sheet": "المعالجة", "type": "بودرة", "weight": "6كجم", "section": "المعالجة", "location": "بجوار تنك مياة الحريق وتنك مياة الزراعة", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-047", "sheet": "الهدرجة الجديدة والبطارية", "type": "بودرة", "weight": "6كجم", "section": "الهدرجة الجديدة", "location": "بجوار باب الهدرجةFire Point", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-C-02", "sheet": "الهدرجة الجديدة والبطارية", "type": "Co2", "weight": "6كجم", "section": "الهدرجة الجديدة", "location": "بجوار باب الهدرجة امام باب وحدة بطارية الهيدروجين", "box_no": "", "notes": "صدأ وتأكل ببدن الطفاية", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-F-002", "sheet": "الهدرجة الجديدة والبطارية", "type": "رغوي", "weight": "9لتر", "section": "الهدرجة الجديدة", "location": "بجوار باب الهدرجة امام باب وحدة بطارية الهيدروجين", "box_no": "", "notes": "كسر بالقاعدة البلاستك للطفاية", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-066", "sheet": "غرفة الطلمبات والإسكراب", "type": "بودرة", "weight": "6كجم", "section": "الإسكراب", "location": "مدخل الإسكراب", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-F-09", "sheet": "غرفة الطلمبات والإسكراب", "type": "رغوي", "weight": "9لتر", "section": "غرفة طلمبات الحريق", "location": "داخل غرفة الطلمبات", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-069", "sheet": "الغلايات", "type": "بودرة", "weight": "6كجم", "section": "الغلايات", "location": "بين غلاية 2&3", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-074", "sheet": "مخزن 1&2", "type": "بودرة", "weight": "50كجم", "section": "مخزن 1&2&3", "location": "امام مكتب  الجودة علي باب مخزن رقم 1", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-F-10", "sheet": "مخزن 1&2", "type": "رغوي", "weight": "9لتر", "section": "مخزن 1&2&3", "location": "امام مكتب  الجودة علي باب مخزن رقم 1", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-119", "sheet": "التعبئة والصفيح", "type": "بودرة", "weight": "6كجم", "section": "الصفيح", "location": "بجوار مدخل الصفيح", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-C-07", "sheet": "التعبئة والصفيح", "type": "CO2", "weight": "6كجم", "section": "الصفيح", "location": "بداخل الصفيح", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-F-015", "sheet": "التعبئة والصفيح", "type": "رغوي", "weight": "9لتر", "section": "التعبئة", "location": "بجوار خط 11 كجم", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-153", "sheet": "الشورتنج", "type": "بودرة", "weight": "6كجم", "section": "الشورتنج", "location": "بجوار الباب", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-C-12", "sheet": "الشورتنج", "type": "CO2", "weight": "6كجم", "section": "الشورتنج", "location": "لوحة التحكم العمومية", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-F-024", "sheet": "الشورتنج", "type": "رغوي", "weight": "9لتر", "section": "الشورتنج", "location": "على الحائط", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-171", "sheet": "المخزن الفرعي", "type": "بودرة", "weight": "6كجم", "section": "المخزن الفرعي", "location": "بجوار الباب", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-179", "sheet": "التصنيع القديم", "type": "بودرة", "weight": "6كجم", "section": "التصنيع القديم", "location": "أمام تراب التبييض", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-C-14", "sheet": "التصنيع القديم", "type": "CO2", "weight": "6كجم", "section": "التصنيع القديم", "location": "بجوار الورشة", "box_no": "", "notes": "تحتاج تغيير لوجود صدأ", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-228", "sheet": "الشيلرات القديمة والجديدة", "type": "بودرة", "weight": "6كجم", "section": "الشيلرات الجديدة", "location": "خلف لوحة كهرباء التصنيع الجديد", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-C-17", "sheet": "الشيلرات القديمة والجديدة", "type": "Co2", "weight": "6كجم", "section": "الشيلرات الجديدة", "location": "امام لوحة كهرباء طلمبات شيلر فارم التصنيع الجديد", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-F-027", "sheet": "الشيلرات القديمة والجديدة", "type": "Fome", "weight": "9لتر", "section": "الشيلر الكارير", "location": "أمام الغرفة", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-238", "sheet": "تنك فارم", "type": "بودرة", "weight": "6كجم", "section": "رصيف التفريغ", "location": "بجوار سلم الدخول للتنكات", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-C-19", "sheet": "تنك فارم", "type": "CO2", "weight": "6كجم", "section": "تانك فارم", "location": "رصيف التفريغ", "box_no": "", "notes": "البدن متهالك", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-F-028", "sheet": "تنك فارم", "type": "رغوي", "weight": "45لتر", "section": "تانك فارم", "location": "رصيف التفريغ", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-FS.-001", "sheet": "الفاير سيرش", "type": "فاير سيرش Co2", "weight": "6 ك", "section": "الميزان القديم", "location": "لوحة كهرباء الميزان القديم بجوار البوابة الرئيسية", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-FS.-010", "sheet": "الفاير سيرش", "type": "فاير سيرش Co2", "weight": "10 ك", "section": "المعالجة", "location": "لوحة الكهرباء بالغرفة داخل المعالجة", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AI-P-01", "facility": "مباني D,C,E (AI)", "sheet": "مبنى D", "type": "بودرة", "weight": "6كجم", "section": "رصيف التسليم", "location": "داخل صندوق حريق رقم 4 على الرصيف", "box_no": "", "notes": ""}, {"code": "AI-F-01", "facility": "مباني D,C,E (AI)", "sheet": "مبنى D", "type": "رغوى", "weight": "45كجم", "section": "داخل المخزن", "location": "امام الثلاجات", "box_no": "", "notes": ""}, {"code": "AI-P-62", "facility": "مباني D,C,E (AI)", "sheet": "مبنى C", "type": "بودرة", "weight": "6كجم", "section": "صالة الصفيح الدور الارضى", "location": "أمام باب الطوارئ", "box_no": "", "notes": ""}, {"code": "AI-P-93", "facility": "مباني D,C,E (AI)", "sheet": "مبنى E مخزن الكرتون", "type": "بودرة", "weight": "6كجم", "section": "مخزن الكرتون", "location": "على الحائط", "box_no": "", "notes": ""}, {"code": "AI-P-135", "facility": "مباني D,C,E (AI)", "sheet": "الغلايات-الضواغط-التنكات -الشلي", "type": "بودرة", "weight": "6كجم", "section": "الضواغط", "location": "على الحائط داخل الكمبروسر", "box_no": "", "notes": ""}, {"code": "AI-P-169", "facility": "مباني D,C,E (AI)", "sheet": "برج التصنيع", "type": "بودرة", "weight": "6كجم", "section": "برج التصنيع الدور الارضي", "location": "داخل صندوق تراب التبيض", "box_no": "", "notes": ""}, {"code": "AI-FB-01", "facility": "مباني D,C,E (AI)", "sheet": "صناديق الحريق", "type": "صندوق حريق", "weight": "", "section": "مخزن الانتاج التام D", "location": "على رصيف المخزن", "box_no": "1", "notes": "قطر الخرطوم: 1 بوصة"}, {"code": "AI-FS.-001", "facility": "مباني D,C,E (AI)", "sheet": "فاير سيرش", "type": "فاير سيرش Co2", "weight": "6 ك", "section": "الشيلرات", "location": "لوحة كهرباء داخل شيلرات التنكات", "box_no": "", "notes": ""}];
+
+const DEFAULT_CHECKLISTS = {
+  powder: ["الطفاية في مكانها المخصص والوصول لها غير معاق","لافتة/علامة الطفاية ظاهرة وواضحة","التعليمات على البطاقة (النيم بليت) واضحة ومقروءة","أختام الأمان (Safety Seal) سليمة وغير مكسورة","مؤشر الضغط (Pressure Gauge) في المنطقة الخضراء","لا يوجد تلف ظاهري أو صدأ أو تسريب بالجسم","فوهة التفريغ غير مسدودة أو متآكلة","الوزن مطابق للوزن المدون على الطفاية","بطاقة الفحص (Inspection Tag) موجودة ومحدثة","لا يوجد تسريب بودرة حول الصمام"],
+  co2: ["الطفاية في مكانها المخصص والوصول لها غير معاق","لافتة/علامة الطفاية ظاهرة وواضحة","الخرطوم والقمع (Horn) سليمين وغير متشققين","أختام الأمان سليمة وغير مكسورة","وزن الأسطوانة مطابق للوزن الأصلي (بالميزان)","لا يوجد تلف ظاهري أو صدأ أو تسريب بالجسم","الصمام يعمل بسهولة وبدون تسريب","بطاقة الفحص موجودة ومحدثة","تاريخ الفحص الدوري (Hydrostatic Test) لم ينتهِ"],
+  foam: ["الطفاية في مكانها المخصص والوصول لها غير معاق","لافتة/علامة الطفاية ظاهرة وواضحة","مؤشر الضغط في المنطقة الخضراء","أختام الأمان سليمة وغير مكسورة","لا يوجد تسريب أو صدأ بالجسم الخارجي","فوهة الرش غير مسدودة","الوزن مطابق للمواصفات","بطاقة الفحص موجودة ومحدثة","تاريخ انتهاء المحلول الرغوي لم يمر"],
+  fire_shield: ["غطاء الفوهات (Nozzle Caps) سليم وفي مكانه","الوصلات المصهورة (Fusible Links) نظيفة وغير مغطاة بالشحوم","محطة التشغيل اليدوي (Manual Pull Station) واضحة وسهلة الوصول","بطاقة فحص النظام سارية وحديثة","أسطوانة العامل الكيميائي في الضغط الطبيعي","لا يوجد تلف بالأنابيب أو الوصلات","غطاء تصريف الشفاط ومسار الأنابيب غير معاق"],
+  hose_box: ["باب الصندوق يفتح بسهولة وغير معاق بأي عوائق","الخرطوم ملفوف بشكل صحيح وبدون التواءات","الفوهة (Nozzle) مثبتة وتعمل (رذاذ/تيار مستقيم)","المحبس (Valve) يعمل بسهولة وبدون تسريب","حامل/كلاب تثبيت الخرطوم في مكانه","زجاج الصندوق (لو بابه زجاج) سليم غير مكسور","اللافتة/العلامة الإرشادية ظاهرة وواضحة","لا يوجد تلف ظاهري أو صدأ بالصندوق","قراءة مقياس الضغط طبيعية (لو الصندوق مزود بمقياس)","منطقة الوصول للصندوق غير معاقة"],
+  fire_search: ["رأس الكاشف (Detector Head) نظيف من الأتربة أو الشحوم","الكابلات والتوصيلات سليمة وبدون تلف ظاهري","لوحة التحكم تعرض حالة طبيعية (بدون Fault)","محاذاة الكاشف مع الداكت صحيحة","فوهة الإطفاء غير مسدودة","تم عمل اختبار وظيفي للكاشف حسب تعليمات الشركة المصنعة","حالة بطارية الاحتياط (Backup Battery) طبيعية","سجل الفحص الدوري محدث"],
+  general: ["العنصر في مكانه المخصص والوصول له غير معاق","لا يوجد تلف ظاهري أو صدأ","اللافتة/العلامة الإرشادية ظاهرة وواضحة","بطاقة الفحص موجودة ومحدثة","الحالة العامة سليمة وجاهزة للاستخدام"]
+};
+
+const CATEGORY_LABELS = {
+  powder:"طفاية بودرة",co2:"طفاية CO2",foam:"طفاية رغوي",
+  fire_shield:"نظام فاير شيلد (مطابخ)",hose_box:"صندوق حريق / خرطوم",
+  fire_search:"نظام فاير سيرش (كاشف شرر)",general:"عنصر عام"
+};
+
+// Default system types (name -> category). Users can add/edit/delete these.
+const DEFAULT_TYPES = [
+  {name:"بودرة", category:"powder"},
+  {name:"Co2", category:"co2"},
+  {name:"رغوي", category:"foam"},
+  {name:"فاير شيلد", category:"fire_shield"},
+  {name:"صندوق حريق", category:"hose_box"},
+  {name:"فاير سيرش Co2", category:"fire_search"},
+  {name:"أخرى", category:"general"}
+];
+
+// ===================== STATE =====================
+function loadData(){
+  try{ return JSON.parse(localStorage.getItem('fireData')) || DEFAULT_DATA; }catch(e){ return DEFAULT_DATA; }
+}
+function saveData(d){ localStorage.setItem('fireData', JSON.stringify(d)); }
+function loadChecklists(){
+  try{ return JSON.parse(localStorage.getItem('fireChecklists')) || JSON.parse(JSON.stringify(DEFAULT_CHECKLISTS)); }
+  catch(e){ return JSON.parse(JSON.stringify(DEFAULT_CHECKLISTS)); }
+}
+function saveChecklists(c){ localStorage.setItem('fireChecklists', JSON.stringify(c)); }
+function loadTypes(){
+  try{ return JSON.parse(localStorage.getItem('fireTypes')) || JSON.parse(JSON.stringify(DEFAULT_TYPES)); }
+  catch(e){ return JSON.parse(JSON.stringify(DEFAULT_TYPES)); }
+}
+function saveTypes(t){ localStorage.setItem('fireTypes', JSON.stringify(t)); }
+function getAdminPw(){ return localStorage.getItem('adminPw') || 'admin123'; }
+function setAdminPw(p){ localStorage.setItem('adminPw', p); }
+function loadRecords(){
+  try{ return JSON.parse(localStorage.getItem('inspectionRecords')) || []; }catch(e){ return []; }
+}
+function saveRecords(r){ localStorage.setItem('inspectionRecords', JSON.stringify(r)); }
+
+let DATA = loadData();
+let CHECKLISTS = loadChecklists();
+let TYPES = loadTypes();
+let RECORDS = loadRecords();
+let INDEX = buildIndex();
+
+function buildIndex(){
+  const idx = {};
+  DATA.forEach(it => idx[it.code.trim()] = it);
+  return idx;
+}
+function rebuildIndex(){ INDEX = buildIndex(); }
+
+// ===================== CATEGORIZE =====================
+function typeCategory(name){
+  const n = (name||"").trim().toLowerCase();
+  const found = TYPES.find(t => (t.name||"").trim().toLowerCase()===n);
+  if(found) return found.category;
+  // fallback heuristics for legacy/unknown types
+  if(n.includes("فاير سيرش")) return "fire_search";
+  if(n.includes("صندوق")) return "hose_box";
+  if(n==="بودرة") return "powder";
+  if(n.includes("co2")) return "co2";
+  if(n.includes("رغو")||n.includes("fome")||n.includes("رغوى")) return "foam";
+  if(n.includes("شيلد")) return "fire_shield";
+  return "general";
+}
+function categorize(item){
+  const t = (item.type||"").trim();
+  const sheet = (item.sheet||"");
+  if(sheet.includes("فاير سيرش")) return "fire_search";
+  if(sheet.includes("صندوق")) return "hose_box";
+  return typeCategory(t);
+}
+
+// ===================== ROUTING =====================
+function goAdmin(){
+  document.getElementById('inspectPage').style.display='none';
+  document.getElementById('adminPage').style.display='block';
+  document.getElementById('adminLogin').style.display='block';
+  document.getElementById('adminDash').style.display='none';
+  document.getElementById('pwInput').value='';
+  document.getElementById('loginErr').textContent='';
+  window.location.hash='admin';
+}
+function goInspect(){
+  document.getElementById('adminPage').style.display='none';
+  document.getElementById('inspectPage').style.display='block';
+  window.location.hash='';
+}
+function doLogin(){
+  const pw = document.getElementById('pwInput').value;
+  if(pw === getAdminPw()){
+    document.getElementById('adminLogin').style.display='none';
+    document.getElementById('adminDash').style.display='block';
+    renderItemsTable();
+    renderChecklistEditor();
+    renderTypesTable();
+    updateItemsCount();
+    updateRecordsCount();
+  } else {
+    document.getElementById('loginErr').textContent='كلمة المرور غير صحيحة';
+  }
+}
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    const tabs=['items','records','stats','types','checklists','settings'];
+    b.classList.toggle('active', tabs[i]===name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='types') renderTypesTable();
+  if(name==='checklists') renderChecklistEditor();
+  if(name==='records'){ populateRecordFilters(); renderRecordsTable(); }
+  if(name==='stats') renderStats();
+}
+function updateItemsCount(){
+  document.getElementById('itemsCount').textContent = DATA.length;
+}
+function updateRecordsCount(){
+  document.getElementById('recordsCount').textContent = RECORDS.length;
+}
+
+// ===================== ITEMS TABLE =====================
+let currentPage = 1;
+const PAGE_SIZE = 15;
+
+function renderItemsTable(){
+  const q = (document.getElementById('itemSearch')||{value:''}).value.trim().toLowerCase();
+  const filtered = DATA.filter(it =>
+    !q ||
+    it.code.toLowerCase().includes(q) ||
+    (it.location||'').toLowerCase().includes(q) ||
+    (it.type||'').toLowerCase().includes(q) ||
+    (it.section||'').toLowerCase().includes(q) ||
+    (it.facility||'').toLowerCase().includes(q)
+  );
+  const total = filtered.length;
+  const pages = Math.max(1, Math.ceil(total/PAGE_SIZE));
+  if(currentPage > pages) currentPage = 1;
+  const slice = filtered.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+
+  const tbody = document.getElementById('itemsTableBody');
+  if(!tbody) return;
+  tbody.innerHTML = slice.map(it => `
+    <tr>
+      <td><b>${esc(it.code)}</b></td>
+      <td>${esc(it.type||'-')}</td>
+      <td style="font-size:11px;">${esc(it.facility||'-')}</td>
+      <td style="font-size:11px;">${esc(it.section||it.sheet||'-')}</td>
+      <td style="font-size:11px;">${esc(it.location||'-')}</td>
+      <td>${esc(it.weight||'-')}</td>
+      <td style="font-size:11px;color:var(--amber);">${esc(it.notes||'')}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-amber" onclick="openEditItem('${esc(it.code)}')">✏️</button>
+        &nbsp;
+        <button class="btn-red" onclick="deleteItem('${esc(it.code)}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+
+  // Pagination
+  const pg = document.getElementById('itemsPagination');
+  if(!pg) return;
+  let html = `<span>${total} عنصر</span>`;
+  if(pages > 1){
+    html += `<button onclick="changePage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+    for(let i=1;i<=pages;i++){
+      if(i===1||i===pages||Math.abs(i-currentPage)<=1){
+        html += `<button class="${i===currentPage?'active':''}" onclick="changePage(${i})">${i}</button>`;
+      } else if(Math.abs(i-currentPage)===2){
+        html += `<span>…</span>`;
+      }
+    }
+    html += `<button onclick="changePage(${currentPage+1})" ${currentPage===pages?'disabled':''}>›</button>`;
+  }
+  pg.innerHTML = html;
+}
+function changePage(p){ currentPage=p; renderItemsTable(); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'&quot;'); }
+
+// ===================== ITEM MODAL =====================
+let editingCode = null;
+function openAddItem(){
+  editingCode = null;
+  document.getElementById('modalTitle').textContent = 'إضافة عنصر جديد';
+  ['fCode','fSheet','fSection','fLocation','fWeight','fBoxNo','fNotes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fType').value='بودرة';
+  document.getElementById('fFacility').value='الموقع الرئيسي (AFI)';
+  document.getElementById('fCode').readOnly = false;
+  document.getElementById('itemModal').classList.add('open');
+}
+function openEditItem(code){
+  const it = INDEX[code];
+  if(!it) return;
+  editingCode = code;
+  document.getElementById('modalTitle').textContent = 'تعديل عنصر: ' + code;
+  document.getElementById('fCode').value = it.code;
+  document.getElementById('fCode').readOnly = true;
+  document.getElementById('fType').value = it.type||'بودرة';
+  document.getElementById('fFacility').value = it.facility||'الموقع الرئيسي (AFI)';
+  document.getElementById('fSheet').value = it.sheet||'';
+  document.getElementById('fSection').value = it.section||'';
+  document.getElementById('fLocation').value = it.location||'';
+  document.getElementById('fWeight').value = it.weight||'';
+  document.getElementById('fBoxNo').value = it.box_no||'';
+  document.getElementById('fNotes').value = it.notes||'';
+  document.getElementById('itemModal').classList.add('open');
+}
+function closeModal(){ document.getElementById('itemModal').classList.remove('open'); }
+function saveItem(){
+  const code = document.getElementById('fCode').value.trim();
+  if(!code){ alert('الكود مطلوب'); return; }
+  const item = {
+    code, type: document.getElementById('fType').value,
+    facility: document.getElementById('fFacility').value,
+    sheet: document.getElementById('fSheet').value.trim(),
+    section: document.getElementById('fSection').value.trim(),
+    location: document.getElementById('fLocation').value.trim(),
+    weight: document.getElementById('fWeight').value.trim(),
+    box_no: document.getElementById('fBoxNo').value.trim(),
+    notes: document.getElementById('fNotes').value.trim()
+  };
+  if(editingCode){
+    const idx = DATA.findIndex(it=>it.code===editingCode);
+    if(idx>=0) DATA[idx]=item;
+  } else {
+    if(INDEX[code]){ alert('الكود موجود بالفعل'); return; }
+    DATA.push(item);
+  }
+  saveData(DATA); rebuildIndex(); renderItemsTable(); updateItemsCount();
+  closeModal();
+}
+function deleteItem(code){
+  if(!confirm('هل تريد حذف العنصر: ' + code + '؟')) return;
+  DATA = DATA.filter(it=>it.code!==code);
+  saveData(DATA); rebuildIndex(); renderItemsTable(); updateItemsCount();
+}
+function exportItemsExcel(){
+  const rows = [['الكود','النوع','الموقع','الورقة','القسم','المكان','الوزن','رقم الصندوق','ملاحظات']];
+  DATA.forEach(it=>rows.push([it.code,it.type||'',it.facility||'',it.sheet||'',it.section||'',it.location||'',it.weight||'',it.box_no||'',it.notes||'']));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:14},{wch:14},{wch:20},{wch:20},{wch:20},{wch:30},{wch:8},{wch:8},{wch:30}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"العناصر");
+  XLSX.writeFile(wb,"قائمة_العناصر.xlsx");
+}
+
+// ===================== INSPECTION RECORDS =====================
+let recordsPage = 1;
+const RECORDS_PAGE_SIZE = 15;
+
+function saveInspection(){
+  if(!currentItem) return;
+  const inspector = document.getElementById('inspectorName').value.trim();
+  const date = document.getElementById('inspectDate').value;
+  if(!inspector){ showSaveMsg('أدخل اسم الفاحص أولاً', true); return; }
+  if(!date){ showSaveMsg('حدد تاريخ الفحص', true); return; }
+
+  const rows = Array.from(document.getElementById('checklistBody').children);
+  const results = rows.map(tr=>({
+    item: tr.children[1].textContent,
+    status: tr.children[2].querySelector('select').value,
+    note: tr.children[3].querySelector('input').value
+  }));
+  const unanswered = results.filter(r=>!r.status);
+  if(unanswered.length){ showSaveMsg('أكمل حالة جميع بنود الفحص قبل الحفظ', true); return; }
+
+  const cat = categorize(currentItem);
+  const record = {
+    id: Date.now(),
+    code: currentItem.code,
+    type: currentItem.type||'',
+    category: cat,
+    facility: currentItem.facility||'',
+    section: currentItem.section||currentItem.sheet||'',
+    location: currentItem.location||'',
+    inspector,
+    date,
+    savedAt: new Date().toISOString(),
+    results,
+    generalNotes: document.getElementById('generalNotes').value.trim()
+  };
+  RECORDS.unshift(record);
+  saveRecords(RECORDS);
+  updateRecordsCount();
+  showSaveMsg('✅ تم حفظ نتيجة الفحص في السجل', false);
+}
+
+function showSaveMsg(msg, isError){
+  const el = document.getElementById('saveMsg');
+  el.style.display='block';
+  el.style.color = isError ? 'var(--red)' : 'var(--green)';
+  el.textContent = msg;
+  setTimeout(()=>{ el.style.display='none'; }, 4000);
+}
+
+function recordStatus(r){
+  const bad = r.results.filter(x=>x.status==='غير مطابق').length;
+  const maint = r.results.filter(x=>x.status==='يحتاج صيانة').length;
+  if(bad>0) return 'fail';
+  if(maint>0) return 'warn';
+  return 'pass';
+}
+
+function populateRecordFilters(){
+  const facSel = document.getElementById('filterFacility');
+  const typeSel = document.getElementById('filterType');
+  if(!facSel || !typeSel) return;
+  const facs = [...new Set(RECORDS.map(r=>r.facility).filter(Boolean))].sort();
+  const types = [...new Set(RECORDS.map(r=>r.type).filter(Boolean))].sort();
+  facSel.innerHTML = '<option value="">كل المواقع</option>'+facs.map(f=>'<option value="'+esc(f)+'">'+esc(f)+'</option>').join('');
+  typeSel.innerHTML = '<option value="">كل الأنظمة</option>'+types.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join('');
+}
+
+function resetRecordFilters(){
+  ['recordSearch','filterStatus','filterFacility','filterType','filterFrom','filterTo'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  recordsPage=1; renderRecordsTable();
+}
+
+function renderRecordsTable(){
+  const q = (document.getElementById('recordSearch')||{value:''}).value.trim().toLowerCase();
+  const fStatus = (document.getElementById('filterStatus')||{value:''}).value;
+  const fFacility = (document.getElementById('filterFacility')||{value:''}).value;
+  const fType = (document.getElementById('filterType')||{value:''}).value;
+  const fFrom = (document.getElementById('filterFrom')||{value:''}).value;
+  const fTo = (document.getElementById('filterTo')||{value:''}).value;
+  const filtered = RECORDS.filter(r =>{
+    if(q && !(r.code.toLowerCase().includes(q) || (r.inspector||'').toLowerCase().includes(q) || (r.facility||'').toLowerCase().includes(q) || (r.type||'').toLowerCase().includes(q))) return false;
+    if(fStatus && recordStatus(r)!==fStatus) return false;
+    if(fFacility && r.facility!==fFacility) return false;
+    if(fType && r.type!==fType) return false;
+    if(fFrom && r.date < fFrom) return false;
+    if(fTo && r.date > fTo) return false;
+    return true;
+  });
+  const total = filtered.length;
+  const pages = Math.max(1, Math.ceil(total/RECORDS_PAGE_SIZE));
+  if(recordsPage > pages) recordsPage = 1;
+  const slice = filtered.slice((recordsPage-1)*RECORDS_PAGE_SIZE, recordsPage*RECORDS_PAGE_SIZE);
+
+  const tbody = document.getElementById('recordsTableBody');
+  if(!tbody) return;
+  if(!slice.length){
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">لا توجد فحوصات محفوظة بعد</td></tr>';
+  } else {
+    tbody.innerHTML = slice.map(r=>{
+      const bad = r.results.filter(x=>x.status==='غير مطابق').length;
+      const maint = r.results.filter(x=>x.status==='يحتاج صيانة').length;
+      let pill = '<span style="background:#eaf6ee;color:var(--green-dark);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">سليم</span>';
+      if(bad>0) pill = '<span style="background:#fbe9e9;color:var(--red);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">'+bad+' غير مطابق</span>';
+      else if(maint>0) pill = '<span style="background:#fdf3e0;color:var(--amber);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">'+maint+' يحتاج صيانة</span>';
+      return '<tr>'+
+        '<td><b>'+esc(r.code)+'</b></td>'+
+        '<td>'+esc(r.type||'-')+'</td>'+
+        '<td style="font-size:11px;">'+esc(r.facility||'-')+'</td>'+
+        '<td>'+esc(r.inspector||'-')+'</td>'+
+        '<td style="font-size:11px;">'+esc(r.date||'-')+'</td>'+
+        '<td>'+pill+'</td>'+
+        '<td style="white-space:nowrap;">'+
+          '<button class="btn-amber" onclick="viewRecord('+r.id+')">👁️</button>&nbsp;'+
+          '<button class="btn-red" onclick="deleteRecord('+r.id+')">🗑️</button>'+
+        '</td></tr>';
+    }).join('');
+  }
+
+  const pg = document.getElementById('recordsPagination');
+  if(!pg) return;
+  let html = '<span>'+total+' فحص</span>';
+  if(pages > 1){
+    html += '<button onclick="recordsPageChange('+(recordsPage-1)+')" '+(recordsPage===1?'disabled':'')+'>‹</button>';
+    for(let i=1;i<=pages;i++){
+      if(i===1||i===pages||Math.abs(i-recordsPage)<=1){
+        html += '<button class="'+(i===recordsPage?'active':'')+'" onclick="recordsPageChange('+i+')">'+i+'</button>';
+      } else if(Math.abs(i-recordsPage)===2){
+        html += '<span>…</span>';
+      }
+    }
+    html += '<button onclick="recordsPageChange('+(recordsPage+1)+')" '+(recordsPage===pages?'disabled':'')+'>›</button>';
+  }
+  pg.innerHTML = html;
+}
+function recordsPageChange(p){ recordsPage=p; renderRecordsTable(); }
+
+function viewRecord(id){
+  const r = RECORDS.find(x=>x.id===id);
+  if(!r) return;
+  const bad = r.results.filter(x=>x.status==='غير مطابق').length;
+  const maint = r.results.filter(x=>x.status==='يحتاج صيانة').length;
+  const ok = r.results.filter(x=>x.status==='سليم').length;
+  let rows = r.results.map((x,i)=>
+    '<tr><td class="item-no">'+(i+1)+'</td><td>'+esc(x.item)+'</td>'+
+    '<td style="text-align:center;">'+statusBadge(x.status)+'</td>'+
+    '<td style="font-size:11px;">'+esc(x.note||'')+'</td></tr>'
+  ).join('');
+  const html = '<div class="modal-box" style="max-width:640px;">'+
+    '<h3>تفاصيل الفحص — '+esc(r.code)+'</h3>'+
+    '<table class="info-table" style="margin-bottom:12px;">'+
+      '<tr><td class="label">النوع</td><td>'+esc(r.type||'-')+'</td></tr>'+
+      '<tr><td class="label">الموقع</td><td>'+esc(r.facility||'-')+'</td></tr>'+
+      '<tr><td class="label">القسم</td><td>'+esc(r.section||'-')+'</td></tr>'+
+      '<tr><td class="label">المكان</td><td>'+esc(r.location||'-')+'</td></tr>'+
+      '<tr><td class="label">الفاحص</td><td>'+esc(r.inspector||'-')+'</td></tr>'+
+      '<tr><td class="label">التاريخ</td><td>'+esc(r.date||'-')+'</td></tr>'+
+      '<tr><td class="label">الملخص</td><td><span style="background:#eaf6ee;color:var(--green-dark);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">'+ok+' سليم</span> '+
+        (maint?'<span style="background:#fdf3e0;color:var(--amber);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">'+maint+' صيانة</span> ':'')+
+        (bad?'<span style="background:#fbe9e9;color:var(--red);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">'+bad+' غير مطابق</span>':'')+
+      '</td></tr>'+
+    '</table>'+
+    '<table class="checklist"><thead><tr><th style="width:26px;">م</th><th>بند الفحص</th><th style="width:110px;">الحالة</th><th>ملاحظة</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    (r.generalNotes?'<div style="margin-top:10px;font-size:12px;color:var(--muted);"><b>ملاحظات عامة:</b> '+esc(r.generalNotes)+'</div>':'')+
+    '<div class="modal-actions"><button class="btn-outline" onclick="closeRecordModal()">إغلاق</button></div>'+
+  '</div>';
+  const ov = document.createElement('div');
+  ov.className='modal-overlay open'; ov.id='recordModal';
+  ov.innerHTML=html;
+  ov.addEventListener('click',function(e){ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+function statusBadge(s){
+  if(s==='سليم') return '<span style="background:#eaf6ee;color:var(--green-dark);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">✅ سليم</span>';
+  if(s==='يحتاج صيانة') return '<span style="background:#fdf3e0;color:var(--amber);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">⚠️ صيانة</span>';
+  if(s==='غير مطابق') return '<span style="background:#fbe9e9;color:var(--red);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">❌ غير مطابق</span>';
+  return '<span style="background:#eee;color:var(--muted);border-radius:12px;padding:2px 10px;font-size:11px;">➖ N/A</span>';
+}
+function closeRecordModal(){
+  const el = document.getElementById('recordModal');
+  if(el) el.remove();
+}
+function deleteRecord(id){
+  if(!confirm('هل تريد حذف هذا الفحص من السجل؟')) return;
+  RECORDS = RECORDS.filter(r=>r.id!==id);
+  saveRecords(RECORDS);
+  updateRecordsCount();
+  renderRecordsTable();
+}
+function clearAllRecords(){
+  if(!RECORDS.length) return;
+  if(!confirm('تحذير: سيتم حذف جميع الفحوصات المحفوظة نهائيًا. هل أنت متأكد؟')) return;
+  RECORDS = [];
+  saveRecords(RECORDS);
+  updateRecordsCount();
+  renderRecordsTable();
+}
+function exportRecordsExcel(){
+  if(!RECORDS.length){ alert('لا توجد فحوصات محفوظة للتصدير'); return; }
+  const rows = [['الكود','النوع','الموقع','القسم','المكان','الفاحص','التاريخ','النتيجة','ملاحظات عامة']];
+  RECORDS.forEach(r=>{
+    const bad = r.results.filter(x=>x.status==='غير مطابق').length;
+    const maint = r.results.filter(x=>x.status==='يحتاج صيانة').length;
+    let res = 'سليم';
+    if(bad>0) res = bad+' غير مطابق';
+    else if(maint>0) res = maint+' يحتاج صيانة';
+    rows.push([r.code,r.type||'',r.facility||'',r.section||'',r.location||'',r.inspector||'',r.date||'',res,r.generalNotes||'']);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:14},{wch:14},{wch:20},{wch:20},{wch:30},{wch:14},{wch:12},{wch:16},{wch:30}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"سجل الفحوصات");
+  XLSX.writeFile(wb,"سجل_الفحوصات.xlsx");
+}
+
+// ===================== STATISTICS =====================
+function renderStats(){
+  const kpis = document.getElementById('statsKpis');
+  const byType = document.getElementById('statsByType');
+  const byLoc = document.getElementById('statsByLocation');
+  const byRes = document.getElementById('statsByResult');
+  if(!kpis||!byType||!byLoc||!byRes) return;
+
+  if(!RECORDS.length){
+    kpis.innerHTML = '<div class="stat-empty" style="grid-column:1/-1;">لا توجد فحوصات محفوظة بعد لعرض الإحصائيات</div>';
+    byType.innerHTML = '<div class="stat-empty">لا توجد بيانات</div>';
+    byLoc.innerHTML = '<div class="stat-empty">لا توجد بيانات</div>';
+    byRes.innerHTML = '<div class="stat-empty">لا توجد بيانات</div>';
+    return;
+  }
+
+  // ---- KPIs ----
+  const total = RECORDS.length;
+  let pass=0, fail=0, warn=0, na=0;
+  RECORDS.forEach(r=>{
+    const bad = r.results.filter(x=>x.status==='غير مطابق').length;
+    const maint = r.results.filter(x=>x.status==='يحتاج صيانة').length;
+    if(bad>0) fail++;
+    else if(maint>0) warn++;
+    else pass++;
+  });
+  const passPct = Math.round(pass/total*100);
+  const failPct = Math.round(fail/total*100);
+  const warnPct = Math.round(warn/total*100);
+
+  kpis.innerHTML =
+    '<div class="stat-kpi"><div class="kpi-label">إجمالي الفحوصات</div><div class="kpi-value">'+total+'</div><div class="kpi-sub">فحص محفوظ</div></div>'+
+    '<div class="stat-kpi kpi-pass"><div class="kpi-label">سليمة بالكامل</div><div class="kpi-value">'+pass+'</div><div class="kpi-sub">'+passPct+'% من الفحوصات</div></div>'+
+    '<div class="stat-kpi kpi-warn"><div class="kpi-label">تحتاج صيانة</div><div class="kpi-value">'+warn+'</div><div class="kpi-sub">'+warnPct+'% من الفحوصات</div></div>'+
+    '<div class="stat-kpi kpi-fail"><div class="kpi-label">غير مطابقة</div><div class="kpi-value">'+fail+'</div><div class="kpi-sub">'+failPct+'% من الفحوصات</div></div>';
+
+  // ---- By type ----
+  const typeCount = {};
+  RECORDS.forEach(r=>{
+    const key = r.type || 'غير محدد';
+    typeCount[key] = (typeCount[key]||0)+1;
+  });
+  const typeSorted = Object.entries(typeCount).sort((a,b)=>b[1]-a[1]);
+  const typeMax = typeSorted[0][1];
+  byType.innerHTML = typeSorted.map(([name,count])=>
+    '<div class="stat-bar-row">'+
+      '<div class="bar-label" title="'+esc(name)+'">'+esc(name)+'</div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+Math.round(count/typeMax*100)+'%"></div></div>'+
+      '<div class="bar-count">'+count+'</div>'+
+    '</div>'
+  ).join('');
+
+  // ---- By location ----
+  const locCount = {};
+  RECORDS.forEach(r=>{
+    const key = r.facility || 'غير محدد';
+    locCount[key] = (locCount[key]||0)+1;
+  });
+  const locSorted = Object.entries(locCount).sort((a,b)=>b[1]-a[1]);
+  const locMax = locSorted[0][1];
+  byLoc.innerHTML = locSorted.map(([name,count])=>
+    '<div class="stat-bar-row">'+
+      '<div class="bar-label" title="'+esc(name)+'">'+esc(name)+'</div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+Math.round(count/locMax*100)+'%"></div></div>'+
+      '<div class="bar-count">'+count+'</div>'+
+    '</div>'
+  ).join('');
+
+  // ---- By result ----
+  byRes.innerHTML =
+    '<div class="stat-result-row r-pass"><span>✅ سليمة بالكامل</span><span class="r-count">'+pass+'</span></div>'+
+    '<div class="stat-result-row r-warn"><span>⚠️ تحتاج صيانة</span><span class="r-count">'+warn+'</span></div>'+
+    '<div class="stat-result-row r-fail"><span>❌ غير مطابقة</span><span class="r-count">'+fail+'</span></div>';
+}
+
+// ===================== CHECKLIST EDITOR =====================
+function renderChecklistEditor(){
+  const type = document.getElementById('clTypeSelect').value;
+  const items = (CHECKLISTS[type]||[]);
+  let html = '<div id="clItems">';
+  items.forEach((txt,i)=>{
+    html += `<div class="cl-item-row">
+      <input value="${esc(txt)}" id="cli_${i}" placeholder="بند الفحص...">
+      <button class="btn-red" onclick="removeClItem(${i})">✕</button>
+    </div>`;
+  });
+  html += '</div>';
+  html += `<div class="add-cl-row">
+    <input id="newClItem" placeholder="أضف بند فحص جديد...">
+    <button class="btn-green" onclick="addClItem()">+ إضافة</button>
+  </div>`;
+  document.getElementById('clEditorArea').innerHTML = html;
+}
+function addClItem(){
+  const val = document.getElementById('newClItem').value.trim();
+  if(!val) return;
+  const type = document.getElementById('clTypeSelect').value;
+  if(!CHECKLISTS[type]) CHECKLISTS[type]=[];
+  CHECKLISTS[type].push(val);
+  renderChecklistEditor();
+}
+function removeClItem(i){
+  const type = document.getElementById('clTypeSelect').value;
+  CHECKLISTS[type].splice(i,1);
+  renderChecklistEditor();
+}
+function saveChecklist(){
+  const type = document.getElementById('clTypeSelect').value;
+  const inputs = document.querySelectorAll('#clItems input');
+  CHECKLISTS[type] = Array.from(inputs).map(inp=>inp.value.trim()).filter(Boolean);
+  saveChecklists(CHECKLISTS);
+  alert('✅ تم حفظ قائمة الفحص بنجاح');
+}
+function resetChecklist(){
+  if(!confirm('هل تريد استعادة القائمة الافتراضية لهذا النوع؟')) return;
+  const type = document.getElementById('clTypeSelect').value;
+  CHECKLISTS[type] = JSON.parse(JSON.stringify(DEFAULT_CHECKLISTS[type]||[]));
+  saveChecklists(CHECKLISTS);
+  renderChecklistEditor();
+}
+
+// ===================== SYSTEM TYPES =====================
+let editingTypeName = null;
+function renderTypesTable(){
+  const tbody = document.getElementById('typesTableBody');
+  if(!tbody) return;
+  tbody.innerHTML = TYPES.map(t => {
+    const count = DATA.filter(it => (it.type||'').trim().toLowerCase() === (t.name||'').trim().toLowerCase()).length;
+    return `
+      <tr>
+        <td><b>${esc(t.name)}</b></td>
+        <td>${esc(CATEGORY_LABELS[t.category]||t.category||'-')}</td>
+        <td>${count} عنصر</td>
+        <td style="white-space:nowrap;">
+          <button class="btn-amber" onclick="editType('${esc(t.name)}')">✏️</button>
+          &nbsp;
+          <button class="btn-red" onclick="deleteType('${esc(t.name)}')">🗑️</button>
+        </td>
+      </tr>`;
+  }).join('');
+}
+function openAddType(){
+  editingTypeName = null;
+  document.getElementById('typeModalTitle').textContent = 'إضافة نوع نظام';
+  document.getElementById('tfName').value = '';
+  document.getElementById('tfCategory').value = 'powder';
+  document.getElementById('typeModal').classList.add('open');
+}
+function editType(name){
+  const t = TYPES.find(x => (x.name||'').trim().toLowerCase() === (name||'').trim().toLowerCase());
+  if(!t) return;
+  editingTypeName = t.name;
+  document.getElementById('typeModalTitle').textContent = 'تعديل نوع: ' + t.name;
+  document.getElementById('tfName').value = t.name;
+  document.getElementById('tfCategory').value = t.category||'general';
+  document.getElementById('typeModal').classList.add('open');
+}
+function closeTypeModal(){ document.getElementById('typeModal').classList.remove('open'); }
+function saveType(){
+  const name = document.getElementById('tfName').value.trim();
+  if(!name){ alert('اسم النوع مطلوب'); return; }
+  const category = document.getElementById('tfCategory').value;
+  const dup = TYPES.find(x => (x.name||'').trim().toLowerCase() === name.toLowerCase() && x.name !== editingTypeName);
+  if(dup){ alert('هذا النوع موجود بالفعل'); return; }
+  if(editingTypeName){
+    const idx = TYPES.findIndex(x => x.name === editingTypeName);
+    if(idx>=0) TYPES[idx] = {name, category};
+  } else {
+    TYPES.push({name, category});
+  }
+  saveTypes(TYPES);
+  renderTypesTable();
+  closeTypeModal();
+}
+function deleteType(name){
+  if(!confirm('هل تريد حذف النوع: ' + name + '؟')) return;
+  TYPES = TYPES.filter(t => t.name !== name);
+  saveTypes(TYPES);
+  renderTypesTable();
+}
+function resetTypes(){
+  if(!confirm('هل تريد استعادة قائمة الأنواع الافتراضية؟ سيتم حذف أي أنواع أضفتها.')) return;
+  TYPES = JSON.parse(JSON.stringify(DEFAULT_TYPES));
+  saveTypes(TYPES);
+  renderTypesTable();
+}
+
+// ===================== SETTINGS =====================
+function changePassword(){
+  const p1 = document.getElementById('newPw1').value;
+  const p2 = document.getElementById('newPw2').value;
+  const msg = document.getElementById('pwMsg');
+  if(!p1){ msg.style.color='var(--red)'; msg.textContent='أدخل كلمة المرور الجديدة'; return; }
+  if(p1!==p2){ msg.style.color='var(--red)'; msg.textContent='كلمتا المرور غير متطابقتين'; return; }
+  setAdminPw(p1);
+  msg.style.color='var(--green)'; msg.textContent='✅ تم تغيير كلمة المرور بنجاح';
+  document.getElementById('newPw1').value='';
+  document.getElementById('newPw2').value='';
+}
+function exportJSON(){
+  const blob = new Blob([JSON.stringify({data:DATA,checklists:CHECKLISTS},null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='fire_inspection_data.json'; a.click();
+}
+function importJSON(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const obj = JSON.parse(e.target.result);
+      if(obj.data){ DATA=obj.data; saveData(DATA); rebuildIndex(); }
+      if(obj.checklists){ CHECKLISTS=obj.checklists; saveChecklists(CHECKLISTS); }
+      alert('✅ تم الاستيراد بنجاح');
+      renderItemsTable(); updateItemsCount(); renderChecklistEditor();
+    }catch(err){ alert('خطأ في قراءة الملف'); }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+function resetAllData(){
+  if(!confirm('تحذير: سيتم حذف جميع التعديلات والعودة للبيانات الافتراضية. هل أنت متأكد؟')) return;
+  DATA = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  CHECKLISTS = JSON.parse(JSON.stringify(DEFAULT_CHECKLISTS));
+  saveData(DATA); saveChecklists(CHECKLISTS); rebuildIndex();
+  renderItemsTable(); updateItemsCount(); renderChecklistEditor();
+  alert('✅ تم إعادة تعيين البيانات للافتراضي');
+}
+
+// ===================== INSPECTION FORM =====================
+function findByCode(code){
+  if(!code) return null;
+  code = code.trim();
+  if(INDEX[code]) return INDEX[code];
+  const lc = code.toLowerCase();
+  return DATA.find(it=>it.code.toLowerCase()===lc)||null;
+}
+let currentItem = null;
+function renderItem(item){
+  currentItem = item;
+  document.getElementById('noItem').style.display='none';
+  document.getElementById('itemArea').style.display='block';
+  document.getElementById('infoCode').textContent=item.code;
+  const cat=categorize(item);
+  document.getElementById('infoType').innerHTML='<span class="badge">'+CATEGORY_LABELS[cat]+'</span> &nbsp; '+(item.type||'-');
+  document.getElementById('infoFacility').textContent=item.facility||'-';
+  document.getElementById('infoSection').textContent=item.section||item.sheet||'-';
+  document.getElementById('infoLocation').textContent=item.location||'-';
+  document.getElementById('infoWeight').textContent=item.weight||'-';
+  document.getElementById('infoBox').textContent=item.box_no||'-';
+  document.getElementById('infoNotes').textContent=item.notes||'-';
+  const list=CHECKLISTS[cat]||CHECKLISTS.general;
+  const body=document.getElementById('checklistBody');
+  body.innerHTML='';
+  list.forEach((text,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td class="item-no">'+(i+1)+'</td>'+
+      '<td>'+text+'</td>'+
+      '<td><select class="status-select" data-val="" onchange="this.setAttribute(\'data-val\',this.value)">'+
+        '<option value="">--</option>'+
+        '<option value="سليم">✅ سليم</option>'+
+        '<option value="يحتاج صيانة">⚠️ يحتاج صيانة</option>'+
+        '<option value="غير مطابق">❌ غير مطابق</option>'+
+        '<option value="غير قابل للتطبيق">➖ غير قابل للتطبيق</option>'+
+      '</select></td>'+
+      '<td><input class="note-input" placeholder="ملاحظة..."></td>';
+    body.appendChild(tr);
+  });
+  if(!document.getElementById('inspectDate').value)
+    document.getElementById('inspectDate').valueAsDate=new Date();
+}
+function loadByCode(code){
+  const item=findByCode(code);
+  if(item){ renderItem(item); document.getElementById('codeInput').value=item.code; hideSuggestions(); }
+  else alert('مفيش عنصر بالكود ده: '+code);
+}
+function loadByInput(){
+  const val=document.getElementById('codeInput').value.trim();
+  if(val) loadByCode(val);
+}
+function hideSuggestions(){
+  const el=document.getElementById('suggestList');
+  el.style.display='none'; el.innerHTML='';
+}
+document.getElementById('codeInput').addEventListener('input',function(){
+  const q=this.value.trim().toLowerCase();
+  const el=document.getElementById('suggestList');
+  if(q.length<2){hideSuggestions();return;}
+  const matches=DATA.filter(it=>
+    it.code.toLowerCase().includes(q)||
+    (it.location||'').toLowerCase().includes(q)||
+    (it.type||'').toLowerCase().includes(q)
+  ).slice(0,15);
+  if(!matches.length){hideSuggestions();return;}
+  el.innerHTML=matches.map(m=>
+    '<div class="suggest-item" onclick="loadByCode(\''+m.code.replace(/'/g,"\\'")+'\')">' +
+    '<b>'+m.code+'</b> — '+(m.type||'')+' — '+(m.location||'')+'</div>'
+  ).join('');
+  el.style.display='block';
+});
+document.getElementById('codeInput').addEventListener('keydown',function(e){
+  if(e.key==='Enter') loadByInput();
+});
+function exportExcel(){
+  if(!currentItem) return;
+  const rows=[['نموذج فحص نظام مكافحة حريق'],[],
+    ['الكود',currentItem.code],['النوع',currentItem.type||''],
+    ['الموقع',currentItem.facility||''],['القسم',currentItem.section||currentItem.sheet||''],
+    ['المكان بالتفصيل',currentItem.location||''],['الوزن',currentItem.weight||''],
+    ['رقم الصندوق',currentItem.box_no||''],
+    ['اسم الفاحص',document.getElementById('inspectorName').value],
+    ['تاريخ الفحص',document.getElementById('inspectDate').value],[],
+    ['م','بند الفحص','الحالة','ملاحظة']
+  ];
+  Array.from(document.getElementById('checklistBody').children).forEach((tr,i)=>{
+    rows.push([i+1,tr.children[1].textContent,tr.children[2].querySelector('select').value,tr.children[3].querySelector('input').value]);
+  });
+  rows.push([],['ملاحظات عامة',document.getElementById('generalNotes').value]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:6},{wch:45},{wch:16},{wch:30}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"فحص");
+  XLSX.writeFile(wb,"فحص_"+currentItem.code+".xlsx");
+}
+
+// ===================== INIT =====================
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const code=params.get('code');
+  if(code){ document.getElementById('codeInput').value=code; loadByCode(code); }
+  if(window.location.hash==='#admin') goAdmin();
+})();
+</script>
+</body>
+</html>
+</parameter>

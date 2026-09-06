@@ -1,0 +1,7 @@
+{
+  "framework": "Static HTML",
+  "installCommand": "true",
+  "devCommand": "npx --yes serve -l 8080 .",
+  "port": 8080,
+  "usesConvex": false
+}

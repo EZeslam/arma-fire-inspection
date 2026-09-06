@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة إدارة - نظام مكافحة الحريق</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --green:#1f6f43;
+    --green-dark:#144d2e;
+    --green-light:#eaf6ee;
+    --amber:#c98a1c;
+    --red:#b93a3a;
+    --bg:#f0f4f2;
+    --card:#ffffff;
+    --border:#d7ddda;
+    --text:#20302a;
+    --muted:#647a70;
+    --sidebar-w:240px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:"Tahoma","Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* ── LOGIN ── */
+  #loginScreen{
+    display:flex;align-items:center;justify-content:center;min-height:100vh;
+    background:linear-gradient(135deg,var(--green-dark),var(--green));
+  }
+  .login-box{
+    background:#fff;border-radius:16px;padding:40px 36px;width:340px;
+    box-shadow:0 8px 32px rgba(0,0,0,.18);text-align:center;
+  }
+  .login-box h2{color:var(--green-dark);margin-bottom:6px;font-size:20px;}
+  .login-box p{color:var(--muted);font-size:13px;margin-bottom:24px;}
+  .login-box input{
+    width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;
+    font-size:14px;margin-bottom:14px;text-align:center;letter-spacing:3px;
+  }
+  .login-box input:focus{outline:none;border-color:var(--green);}
+  .login-box button{
+    width:100%;padding:12px;background:linear-gradient(135deg,var(--green),var(--green-dark));
+    color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;
+  }
+  .login-box button:hover{opacity:.9;}
+  .login-err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
+
+  /* ── LAYOUT ── */
+  #adminApp{display:none;min-height:100vh;}
+  .top-bar{
+    background:linear-gradient(135deg,var(--green),var(--green-dark));
+    color:#fff;padding:0 20px;height:56px;display:flex;align-items:center;
+    justify-content:space-between;position:sticky;top:0;z-index:100;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  .top-bar h1{font-size:16px;}
+  .top-bar .tb-right{display:flex;gap:10px;align-items:center;}
+  .top-bar .tb-right span{font-size:12px;opacity:.85;}
+  .btn-logout{
+    padding:6px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+    color:#fff;border-radius:6px;font-size:12px;cursor:pointer;
+  }
+  .btn-logout:hover{background:rgba(255,255,255,.25);}
+
+  .layout{display:flex;min-height:calc(100vh - 56px);}
+
+  /* ── SIDEBAR ── */
+  .sidebar{
+    width:var(--sidebar-w);background:#fff;border-left:1px solid var(--border);
+    padding:16px 0;flex-shrink:0;
+  }
+  .sidebar-section{padding:8px 16px 4px;font-size:11px;color:var(--muted);font-weight:bold;text-transform:uppercase;letter-spacing:.5px;}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;padding:10px 18px;cursor:pointer;
+    font-size:13.5px;color:var(--text);border-right:3px solid transparent;transition:all .15s;
+  }
+  .nav-item:hover{background:var(--green-light);color:var(--green-dark);}
+  .nav-item.active{background:var(--green-light);color:var(--green-dark);border-right-color:var(--green);font-weight:bold;}
+  .nav-item .icon{font-size:16px;width:20px;text-align:center;}
+
+  /* ── MAIN ── */
+  .main{flex:1;padding:20px;overflow:auto;}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  .page-header{margin-bottom:18px;}
+  .page-header h2{font-size:20px;color:var(--green-dark);}
+  .page-header p{font-size:13px;color:var(--muted);margin-top:3px;}
+
+  /* ── STATS CARDS ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:20px;}
+  .stat-card{
+    background:#fff;border-radius:12px;padding:16px;border:1px solid var(--border);
+    box-shadow:0 1px 4px rgba(0,0,0,.04);text-align:center;
+  }
+  .stat-card .num{font-size:28px;font-weight:bold;color:var(--green-dark);}
+  .stat-card .lbl{font-size:12px;color:var(--muted);margin-top:4px;}
+  .stat-card .ico{font-size:22px;margin-bottom:6px;}
+
+  /* ── TOOLBAR ── */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+  .toolbar input,.toolbar select{
+    padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;
+  }
+  .toolbar input{flex:1;min-width:200px;}
+  .btn{
+    padding:8px 16px;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:bold;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn-primary{background:var(--green);color:#fff;}
+  .btn-primary:hover{background:var(--green-dark);}
+  .btn-danger{background:var(--red);color:#fff;}
+  .btn-danger:hover{opacity:.85;}
+  .btn-secondary{background:#fff;color:var(--green-dark);border:1.5px solid var(--green);}
+  .btn-secondary:hover{background:var(--green-light);}
+  .btn-amber{background:var(--amber);color:#fff;}
+  .btn-amber:hover{opacity:.85;}
+  .btn-sm{padding:5px 10px;font-size:12px;}
+
+  /* ── TABLE ── */
+  .table-wrap{background:#fff;border-radius:12px;border:1px solid var(--border);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+  table.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+  table.data-table thead th{
+    background:linear-gradient(to bottom,#2a7a4e,var(--green-dark));color:#fff;
+    padding:10px 10px;text-align:right;font-size:12px;white-space:nowrap;
+  }
+  table.data-table tbody tr:nth-child(even){background:#f7faf8;}
+  table.data-table tbody tr:hover{background:#eef4f1;}
+  table.data-table td{padding:8px 10px;border-bottom:1px solid #eee;vertical-align:middle;}
+  .badge-type{
+    display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:bold;
+    background:var(--green-light);color:var(--green-dark);
+  }
+  .actions-cell{white-space:nowrap;display:flex;gap:6px;}
+  .pagination{display:flex;gap:6px;align-items:center;margin-top:12px;justify-content:center;flex-wrap:wrap;}
+  .pagination button{
+    padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;
+    font-size:12px;cursor:pointer;
+  }
+  .pagination button.active{background:var(--green);color:#fff;border-color:var(--green);}
+  .pagination button:hover:not(.active){background:var(--green-light);}
+  .page-info{font-size:12px;color:var(--muted);}
+
+  /* ── MODAL ── */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;
+    align-items:center;justify-content:center;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:#fff;border-radius:14px;padding:28px;width:560px;max-width:95vw;
+    max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);
+  }
+  .modal h3{font-size:17px;color:var(--green-dark);margin-bottom:18px;border-bottom:1px solid var(--border);padding-bottom:10px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-grid .full{grid-column:1/-1;}
+  .form-group{display:flex;flex-direction:column;gap:5px;}
+  .form-group label{font-size:12px;color:var(--muted);font-weight:bold;}
+  .form-group input,.form-group select,.form-group textarea{
+    padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;
+    font-family:inherit;
+  }
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+    outline:none;border-color:var(--green);
+  }
+  .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
+
+  /* ── CHECKLIST EDITOR ── */
+  .checklist-type-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+  .cl-tab{
+    padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;
+    font-size:12.5px;cursor:pointer;color:var(--text);
+  }
+  .cl-tab.active{background:var(--green);color:#fff;border-color:var(--green);}
+  .checklist-items{background:#fff;border-radius:12px;border:1px solid var(--border);overflow:hidden;}
+  .cl-item{
+    display:flex;align-items:center;gap:10px;padding:10px 14px;
+    border-bottom:1px solid #eee;
+  }
+  .cl-item:last-child{border-bottom:none;}
+  .cl-item .cl-num{color:var(--muted);font-size:12px;width:22px;text-align:center;flex-shrink:0;}
+  .cl-item input{flex:1;border:none;font-size:13px;font-family:inherit;background:transparent;padding:2px 4px;}
+  .cl-item input:focus{outline:1px solid var(--green);border-radius:4px;background:#fff;}
+  .cl-item .del-cl{background:none;border:none;color:#ccc;cursor:pointer;font-size:16px;padding:2px 6px;}
+  .cl-item .del-cl:hover{color:var(--red);}
+  .add-cl-row{padding:10px 14px;display:flex;gap:8px;}
+  .add-cl-row input{flex:1;padding:8px 10px;border:1.5px dashed var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
+  .add-cl-row input:focus{outline:none;border-color:var(--green);}
+
+  /* ── TOAST ── */
+  #toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:#333;color:#fff;padding:10px 22px;border-radius:8px;font-size:13px;
+    z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;
+  }
+  #toast.show{opacity:1;}
+
+  /* ── CONFIRM ── */
+  .confirm-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;
+    align-items:center;justify-content:center;
+  }
+  .confirm-overlay.open{display:flex;}
+  .confirm-box{
+    background:#fff;border-radius:12px;padding:28px;width:360px;max-width:90vw;
+    box-shadow:0 8px 32px rgba(0,0,0,.2);text-align:center;
+  }
+  .confirm-box .ico{font-size:36px;margin-bottom:10px;}
+  .confirm-box h4{font-size:16px;margin-bottom:8px;color:var(--text);}
+  .confirm-box p{font-size:13px;color:var(--muted);margin-bottom:20px;}
+  .confirm-btns{display:flex;gap:10px;justify-content:center;}
+
+  @media(max-width:640px){
+    .sidebar{display:none;}
+    .form-grid{grid-template-columns:1fr;}
+    .stats-grid{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div style="font-size:40px;margin-bottom:10px;">🔐</div>
+    <h2>لوحة الإدارة</h2>
+    <p>نظام فحص أنظمة مكافحة الحريق</p>
+    <input type="password" id="pwdInput" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">دخول</button>
+    <div class="login-err" id="loginErr">❌ كلمة المرور غلط، حاول تاني</div>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div id="adminApp">
+  <div class="top-bar">
+    <h1>🧯 لوحة إدارة نظام مكافحة الحريق</h1>
+    <div class="tb-right">
+      <span id="itemCountBadge"></span>
+      <button class="btn-logout" onclick="doLogout()">خروج 🚪</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-section">القائمة الرئيسية</div>
+      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+        <span class="icon">📊</span> الرئيسية
+      </div>
+      <div class="nav-item" onclick="showPage('items')" id="nav-items">
+        <span class="icon">🧯</span> إدارة العناصر
+      </div>
+      <div class="nav-item" onclick="showPage('checklists')" id="nav-checklists">
+        <span class="icon">✅</span> بنود الفحص
+      </div>
+      <div class="nav-item" onclick="showPage('export')" id="nav-export">
+        <span class="icon">📤</span> تصدير البيانات
+      </div>
+      <div class="sidebar-section" style="margin-top:16px;">الإعدادات</div>
+      <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
+        <span class="icon">⚙️</span> الإعدادات
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <h2>📊 نظرة عامة</h2>
+          <p>ملخص بيانات نظام مكافحة الحريق</p>
+        </div>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:16px;margin-top:4px;">
+          <h3 style="font-size:14px;color:var(--green-dark);margin-bottom:12px;">توزيع العناصر حسب النوع</h3>
+          <div id="typeBreakdown"></div>
+        </div>
+      </div>
+
+      <!-- ITEMS -->
+      <div class="page" id="page-items">
+        <div class="page-header">
+          <h2>🧯 إدارة العناصر</h2>
+          <p>إضافة وتعديل وحذف عناصر الجرد</p>
+        </div>
+        <div class="toolbar">
+          <input type="text" id="searchItems" placeholder="🔍 ابحث بالكود أو الموقع أو النوع..." oninput="renderItemsTable()">
+          <select id="filterFacility" onchange="renderItemsTable()">
+            <option value="">كل المواقع</option>
+          </select>
+          <select id="filterType" onchange="renderItemsTable()">
+            <option value="">كل الأنواع</option>
+          </select>
+          <button class="btn btn-primary" onclick="openAddModal()">➕ إضافة عنصر</button>
+          <button class="btn btn-secondary" onclick="exportCurrentView()">📥 تصدير Excel</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>الكود</th>
+                <th>النوع</th>
+                <th>الموقع / المنطقة</th>
+                <th>القسم</th>
+                <th>المكان</th>
+                <th>الوزن</th>
+                <th>ملاحظات</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="itemsTableBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px;">
+          <div class="page-info" id="pageInfo"></div>
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+
+      <!-- CHECKLISTS -->
+      <div class="page" id="page-checklists">
+        <div class="page-header">
+          <h2>✅ بنود الفحص</h2>
+          <p>تعديل قوائم الفحص لكل نوع من أنظمة مكافحة الحريق</p>
+        </div>
+        <div class="checklist-type-tabs" id="clTabs"></div>
+        <div class="checklist-items" id="clItems"></div>
+        <div class="add-cl-row">
+          <input type="text" id="newClItem" placeholder="أضف بند فحص جديد...">
+          <button class="btn btn-primary" onclick="addClItem()">➕ إضافة</button>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="saveChecklists()">💾 حفظ التغييرات</button>
+          <button class="btn btn-secondary" onclick="resetChecklists()">↩️ استعادة الافتراضي</button>
+        </div>
+      </div>
+
+      <!-- EXPORT -->
+      <div class="page" id="page-export">
+        <div class="page-header">
+          <h2>📤 تصدير البيانات</h2>
+          <p>تصدير بيانات الجرد بصيغ مختلفة</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;">
+          <div style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:20px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:10px;">📊</div>
+            <h3 style="font-size:15px;margin-bottom:6px;">تصدير كل العناصر</h3>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">ملف Excel يحتوي على جميع عناصر الجرد</p>
+            <button class="btn btn-primary" style="width:100%" onclick="exportAllItems()">تصدير Excel</button>
+          </div>
+          <div style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:20px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:10px;">📋</div>
+            <h3 style="font-size:15px;margin-bottom:6px;">تصدير بنود الفحص</h3>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">ملف Excel يحتوي على كل قوائم الفحص</p>
+            <button class="btn btn-primary" style="width:100%" onclick="exportChecklists()">تصدير Excel</button>
+          </div>
+          <div style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:20px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:10px;">💾</div>
+            <h3 style="font-size:15px;margin-bottom:6px;">نسخ احتياطي كامل</h3>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">ملف JSON يحتوي على كل البيانات للاستيراد لاحقاً</p>
+            <button class="btn btn-amber" style="width:100%" onclick="exportBackup()">تصدير JSON</button>
+          </div>
+          <div style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:20px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:10px;">📥</div>
+            <h3 style="font-size:15px;margin-bottom:6px;">استيراد نسخة احتياطية</h3>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">استيراد ملف JSON محفوظ مسبقاً</p>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)">
+            <button class="btn btn-secondary" style="width:100%" onclick="document.getElementById('importFile').click()">استيراد JSON</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="page" id="page-settings">
+        <div class="page-header">
+          <h2>⚙️ الإعدادات</h2>
+          <p>إعدادات النظام وكلمة المرور</p>
+        </div>
+        <div style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:24px;max-width:420px;">
+          <h3 style="font-size:15px;color:var(--green-dark);margin-bottom:16px;">🔑 تغيير كلمة المرور</h3>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label>كلمة المرور الحالية</label>
+            <input type="password" id="oldPwd" placeholder="أدخل كلمة المرور الحالية">
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label>كلمة المرور الجديدة</label>
+            <input type="password" id="newPwd" placeholder="أدخل كلمة المرور الجديدة">
+          </div>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label>تأكيد كلمة المرور الجديدة</label>
+            <input type="password" id="confirmPwd" placeholder="أعد كتابة كلمة المرور الجديدة">
+          </div>
+          <button class="btn btn-primary" onclick="changePwd()">💾 حفظ كلمة المرور</button>
+        </div>
+        <div style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:24px;max-width:420px;margin-top:16px;">
+          <h3 style="font-size:15px;color:var(--red);margin-bottom:12px;">⚠️ إعادة ضبط البيانات</h3>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">سيتم حذف كل التعديلات والعودة للبيانات الأصلية المدمجة في النظام.</p>
+          <button class="btn btn-danger" onclick="confirmResetAll()">🗑️ إعادة ضبط كل البيانات</button>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+  </div><!-- /layout -->
+</div><!-- /adminApp -->
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="itemModal">
+  <div class="modal">
+    <h3 id="modalTitle">إضافة عنصر جديد</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>الكود *</label>
+        <input type="text" id="f_code" placeholder="مثال: AFI-P-001">
+      </div>
+      <div class="form-group">
+        <label>النوع *</label>
+        <select id="f_type">
+          <option value="بودرة">بودرة</option>
+          <option value="Co2">Co2</option>
+          <option value="رغوي">رغوي</option>
+          <option value="فاير شيلد">فاير شيلد</option>
+          <option value="فاير سيرش Co2">فاير سيرش Co2</option>
+          <option value="صندوق حريق">صندوق حريق</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>الموقع / المنطقة</label>
+        <input type="text" id="f_facility" placeholder="مثال: الموقع الرئيسي (AFI)">
+      </div>
+      <div class="form-group">
+        <label>الشيت / القسم الرئيسي</label>
+        <input type="text" id="f_sheet" placeholder="مثال: البوابات والشحن">
+      </div>
+      <div class="form-group">
+        <label>القسم</label>
+        <input type="text" id="f_section" placeholder="مثال: البوابة الرئيسية">
+      </div>
+      <div class="form-group">
+        <label>الوزن / السعة</label>
+        <input type="text" id="f_weight" placeholder="مثال: 6كجم">
+      </div>
+      <div class="form-group full">
+        <label>المكان بالتفصيل</label>
+        <input type="text" id="f_location" placeholder="وصف تفصيلي للمكان">
+      </div>
+      <div class="form-group">
+        <label>رقم الصندوق</label>
+        <input type="text" id="f_box_no" placeholder="رقم الصندوق (إن وجد)">
+      </div>
+      <div class="form-group full">
+        <label>ملاحظات</label>
+        <textarea id="f_notes" rows="2" placeholder="أي ملاحظات على العنصر..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveItem()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="ico" id="confirmIco">⚠️</div>
+    <h4 id="confirmTitle">تأكيد الحذف</h4>
+    <p id="confirmMsg">هل أنت متأكد؟</p>
+    <div class="confirm-btns">
+      <button class="btn btn-secondary" onclick="closeConfirm()">إلغاء</button>
+      <button class="btn btn-danger" id="confirmOkBtn" onclick="">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// EMBEDDED DATA (same as index.html)
+// ══════════════════════════════════════════════
+const ORIGINAL_DATA = [{"code": "AFI-P-001", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "الشحن/البوابة الرئيسية", "location": "داخل مكتب الشحن", "box_no": "", "notes": "تحتاج الي تعليق لانها متروكة علي الارض", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-002", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "البوابة الرئيسية", "location": "داخل البوفية", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-003", "sheet": "البوابات والشحن", "type": "بودرة", "weight": "6كجم", "section": "البوابة الرئيسية", "location": "امام مكتب الشحن ومكتب مدير الامن", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-C-001", "sheet": "البوابات والشحن", "type": "Co2", "weight": "6كجم", "section": "البوابة الرئيسية", "location": "بجوار باب دخول الافراد الي المصنع", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-P-014", "sheet": "مبنى والعيادة  H.R", "type": "بودرة", "weight": "6كجم", "section": "العيادة", "location": "العيادة بجوار باب العيادة", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-F-001", "sheet": "المطبخ", "type": "فاير شيلد", "weight": "9لتر", "section": "المطبخ", "location": "منطقة الافران", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AFI-FS.-001", "sheet": "الفاير سيرش", "type": "فاير سيرش Co2", "weight": "6 ك", "section": "الميزان القديم", "location": "لوحة كهرباء الميزان القديم بجوار البوابة الرئيسية", "box_no": "", "notes": "", "facility": "الموقع الرئيسي (AFI)"}, {"code": "AI-P-01", "facility": "مباني D,C,E (AI)", "sheet": "مبنى D", "type": "بودرة", "weight": "6كجم", "section": "رصيف التسليم", "location": "داخل صندوق حريق رقم 4 على الرصيف", "box_no": "", "notes": ""}, {"code": "AI-FB-01", "facility": "مباني D,C,E (AI)", "sheet": "صناديق الحريق", "type": "صندوق حريق", "weight": "", "section": "مخزن الانتاج التام D", "location": "على رصيف المخزن", "box_no": "1", "notes": "قطر الخرطوم: 1 بوصة"}, {"code": "AI-FS.-001", "facility": "مباني D,C,E (AI)", "sheet": "فاير سيرش", "type": "فاير سيرش Co2", "weight": "6 ك", "section": "الشيلرات", "location": "لوحة كهرباء داخل شيلرات التنكات", "box_no": "", "notes": ""}];
+
+const ORIGINAL_CHECKLISTS = {
+  powder: ["الطفاية في مكانها المخصص والوصول لها غير معاق","لافتة/علامة الطفاية ظاهرة وواضحة","التعليمات على البطاقة (النيم بليت) واضحة ومقروءة","أختام الأمان (Safety Seal) سليمة وغير مكسورة","مؤشر الضغط (Pressure Gauge) في المنطقة الخضراء","لا يوجد تلف ظاهري أو صدأ أو تسريب بالجسم","فوهة التفريغ غير مسدودة أو متآكلة","الوزن مطابق للوزن المدون على الطفاية","بطاقة الفحص (Inspection Tag) موجودة ومحدثة","لا يوجد تسريب بودرة حول الصمام"],
+  co2: ["الطفاية في مكانها المخصص والوصول لها غير معاق","لافتة/علامة الطفاية ظاهرة وواضحة","الخرطوم والقمع (Horn) سليمين وغير متشققين","أختام الأمان سليمة وغير مكسورة","وزن الأسطوانة مطابق للوزن الأصلي (بالميزان)","لا يوجد تلف ظاهري أو صدأ أو تسريب بالجسم","الصمام يعمل بسهولة وبدون تسريب","بطاقة الفحص موجودة ومحدثة","تاريخ الفحص الدوري (Hydrostatic Test) لم ينتهِ"],
+  foam: ["الطفاية في مكانها المخصص والوصول لها غير معاق","لافتة/علامة الطفاية ظاهرة وواضحة","مؤشر الضغط في المنطقة الخضراء","أختام الأمان سليمة وغير مكسورة","لا يوجد تسريب أو صدأ بالجسم الخارجي","فوهة الرش غير مسدودة","الوزن مطابق للمواصفات","بطاقة الفحص موجودة ومحدثة","تاريخ انتهاء المحلول الرغوي لم يمر"],
+  fire_shield: ["غطاء الفوهات (Nozzle Caps) سليم وفي مكانه","الوصلات المصهورة (Fusible Links) نظيفة وغير مغطاة بالشحوم","محطة التشغيل اليدوي (Manual Pull Station) واضحة وسهلة الوصول","بطاقة فحص النظام سارية وحديثة","أسطوانة العامل الكيميائي في الضغط الطبيعي","لا يوجد تلف بالأنابيب أو الوصلات","غطاء تصريف الشفاط ومسار الأنابيب غير معاق"],
+  hose_box: ["باب الصندوق يفتح بسهولة وغير معاق بأي عوائق","الخرطوم ملفوف بشكل صحيح وبدون التواءات","الفوهة (Nozzle) مثبتة وتعمل (رذاذ/تيار مستقيم)","المحبس (Valve) يعمل بسهولة وبدون تسريب","حامل/كلاب تثبيت الخرطوم في مكانه","زجاج الصندوق (لو بابه زجاج) سليم غير مكسور","اللافتة/العلامة الإرشادية ظاهرة وواضحة","لا يوجد تلف ظاهري أو صدأ بالصندوق","قراءة مقياس الضغط طبيعية (لو الصندوق مزود بمقياس)","منطقة الوصول للصندوق غير معاقة"],
+  fire_search: ["رأس الكاشف (Detector Head) نظيف من الأتربة أو الشحوم","الكابلات والتوصيلات سليمة وبدون تلف ظاهري","لوحة التحكم تعرض حالة طبيعية (بدون Fault)","محاذاة الكاشف مع الداكت صحيحة","فوهة الإطفاء غير مسدودة","تم عمل اختبار وظيفي للكاشف حسب تعليمات الشركة المصنعة","حالة بطارية الاحتياط (Backup Battery) طبيعية","سجل الفحص الدوري محدث"],
+  general: ["العنصر في مكانه المخصص والوصول له غير معاق","لا يوجد تلف ظاهري أو صدأ","اللافتة/العلامة الإرشادية ظاهرة وواضحة","بطاقة الفحص موجودة ومحدثة","الحالة العامة سليمة وجاهزة للاستخدام"]
+};
+
+const CATEGORY_LABELS = {
+  powder:"طفاية بودرة", co2:"طفاية CO2", foam:"طفاية رغوي",
+  fire_shield:"فاير شيلد", hose_box:"صندوق حريق", fire_search:"فاير سيرش", general:"عام"
+};
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+const ADMIN_PWD_KEY = 'fire_admin_pwd';
+const DATA_KEY = 'fire_admin_data';
+const CL_KEY = 'fire_admin_checklists';
+
+function getAdminPwd(){ return localStorage.getItem(ADMIN_PWD_KEY) || 'admin123'; }
+function getData(){ 
+  const s = localStorage.getItem(DATA_KEY);
+  return s ? JSON.parse(s) : JSON.parse(JSON.stringify(ORIGINAL_DATA));
+}
+function saveData(d){ localStorage.setItem(DATA_KEY, JSON.stringify(d)); }
+function getChecklists(){
+  const s = localStorage.getItem(CL_KEY);
+  return s ? JSON.parse(s) : JSON.parse(JSON.stringify(ORIGINAL_CHECKLISTS));
+}
+function saveChecklists_(){
+  const cl = getChecklists();
+  localStorage.setItem(CL_KEY, JSON.stringify(cl));
+}
+
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let editingCode = null;
+let currentClType = 'powder';
+let confirmCallback = null;
+
+// ══════════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════════
+function doLogin(){
+  const pwd = document.getElementById('pwdInput').value;
+  if(pwd === getAdminPwd()){
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminApp').style.display = 'block';
+    initApp();
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+    document.getElementById('pwdInput').value = '';
+    document.getElementById('pwdInput').focus();
+  }
+}
+function doLogout(){
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('adminApp').style.display = 'none';
+  document.getElementById('pwdInput').value = '';
+  document.getElementById('loginErr').style.display = 'none';
+}
+document.getElementById('pwdInput').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+function initApp(){
+  renderDashboard();
+  populateFilters();
+  renderItemsTable();
+  renderClTabs();
+  renderClItems();
+}
+
+// ══════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if(name==='items') renderItemsTable();
+  if(name==='checklists'){ renderClTabs(); renderClItems(); }
+  if(name==='dashboard') renderDashboard();
+}
+
+// ══════════════════════════════════════════════
+// CATEGORIZE
+// ══════════════════════════════════════════════
+function categorize(item){
+  const t = (item.type||'').trim();
+  const sheet = (item.sheet||'');
+  if(sheet.includes('فاير سيرش') || t.includes('فاير سيرش')) return 'fire_search';
+  if(sheet.includes('صندوق') || t.includes('صندوق')) return 'hose_box';
+  if(t === 'بودرة') return 'powder';
+  if(t.toLowerCase().includes('co2')) return 'co2';
+  if(t.includes('رغو') || t.toLowerCase().includes('fome') || t.includes('رغوى')) return 'foam';
+  if(t.includes('شيلد')) return 'fire_shield';
+  return 'general';
+}
+
+// ══════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════
+function renderDashboard(){
+  const data = getData();
+  document.getElementById('itemCountBadge').textContent = data.length + ' عنصر';
+
+  const counts = {};
+  Object.keys(CATEGORY_LABELS).forEach(k => counts[k]=0);
+  data.forEach(it => { const c = categorize(it); counts[c] = (counts[c]||0)+1; });
+
+  const facilities = [...new Set(data.map(it => it.facility||'غير محدد'))];
+
+  const statsGrid = document.getElementById('statsGrid');
+  statsGrid.innerHTML = `
+    <div class="stat-card"><div class="ico">🧯</div><div class="num">${data.length}</div><div class="lbl">إجمالي العناصر</div></div>
+    <div class="stat-card"><div class="ico">🏭</div><div class="num">${facilities.length}</div><div class="lbl">المواقع</div></div>
+    <div class="stat-card"><div class="ico">🔴</div><div class="num">${counts.powder||0}</div><div class="lbl">طفايات بودرة</div></div>
+    <div class="stat-card"><div class="ico">⚫</div><div class="num">${counts.co2||0}</div><div class="lbl">طفايات CO2</div></div>
+    <div class="stat-card"><div class="ico">🟡</div><div class="num">${counts.foam||0}</div><div class="lbl">طفايات رغوي</div></div>
+    <div class="stat-card"><div class="ico">📦</div><div class="num">${counts.hose_box||0}</div><div class="lbl">صناديق حريق</div></div>
+    <div class="stat-card"><div class="ico">🔍</div><div class="num">${counts.fire_search||0}</div><div class="lbl">فاير سيرش</div></div>
+    <div class="stat-card"><div class="ico">🛡️</div><div class="num">${counts.fire_shield||0}</div><div class="lbl">فاير شيلد</div></div>
+  `;
+
+  const breakdown = document.getElementById('typeBreakdown');
+  const total = data.length || 1;
+  breakdown.innerHTML = Object.entries(counts).filter(([,v])=>v>0).map(([k,v]) => `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="width:120px;font-size:12px;color:var(--muted);text-align:left;">${CATEGORY_LABELS[k]}</div>
+      <div style="flex:1;background:#eee;border-radius:4px;height:10px;overflow:hidden;">
+        <div style="width:${Math.round(v/total*100)}%;background:var(--green);height:100%;border-radius:4px;"></div>
+      </div>
+      <div style="width:50px;font-size:12px;font-weight:bold;color:var(--green-dark);">${v} (${Math.round(v/total*100)}%)</div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════
+// ITEMS TABLE
+// ══════════════════════════════════════════════
+function populateFilters(){
+  const data = getData();
+  const facilities = [...new Set(data.map(it => it.facility||'').filter(Boolean))];
+  const types = [...new Set(data.map(it => it.type||'').filter(Boolean))];
+  const fSel = document.getElementById('filterFacility');
+  const tSel = document.getElementById('filterType');
+  fSel.innerHTML = '<option value="">كل المواقع</option>' + facilities.map(f=>`<option value="${f}">${f}</option>`).join('');
+  tSel.innerHTML = '<option value="">كل الأنواع</option>' + types.map(t=>`<option value="${t}">${t}</option>`).join('');
+}
+
+function getFilteredData(){
+  const data = getData();
+  const q = document.getElementById('searchItems').value.trim().toLowerCase();
+  const fac = document.getElementById('filterFacility').value;
+  const typ = document.getElementById('filterType').value;
+  return data.filter(it => {
+    if(fac && it.facility !== fac) return false;
+    if(typ && it.type !== typ) return false;
+    if(q && !(
+      (it.code||'').toLowerCase().includes(q) ||
+      (it.location||'').toLowerCase().includes(q) ||
+      (it.type||'').toLowerCase().includes(q) ||
+      (it.section||'').toLowerCase().includes(q) ||
+      (it.notes||'').toLowerCase().includes(q)
+    )) return false;
+    return true;
+  });
+}
+
+function renderItemsTable(){
+  const filtered = getFilteredData();
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if(currentPage > totalPages) currentPage = 1;
+  const start = (currentPage-1)*PAGE_SIZE;
+  const slice = filtered.slice(start, start+PAGE_SIZE);
+
+  const body = document.getElementById('itemsTableBody');
+  body.innerHTML = slice.map((it, i) => {
+    const cat = categorize(it);
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px;">${start+i+1}</td>
+      <td><b style="color:var(--green-dark)">${esc(it.code)}</b></td>
+      <td><span class="badge-type">${esc(it.type||'-')}</span></td>
+      <td style="font-size:12px;">${esc(it.facility||'-')}</td>
+      <td style="font-size:12px;">${esc(it.section||it.sheet||'-')}</td>
+      <td style="font-size:12px;max-width:200px;">${esc(it.location||'-')}</td>
+      <td style="font-size:12px;">${esc(it.weight||'-')}</td>
+      <td style="font-size:12px;color:${it.notes?'var(--amber)':'var(--muted)'};">${esc(it.notes||'-')}</td>
+      <td><div class="actions-cell">
+        <button class="btn btn-secondary btn-sm" onclick="openEditModal('${esc(it.code)}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDelete('${esc(it.code)}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('pageInfo').textContent = `عرض ${start+1}–${Math.min(start+PAGE_SIZE,total)} من ${total} عنصر`;
+
+  // Pagination
+  const pag = document.getElementById('pagination');
+  let btns = '';
+  if(totalPages <= 7){
+    for(let p=1;p<=totalPages;p++) btns += `<button class="${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  } else {
+    btns += `<button class="${currentPage===1?'active':''}" onclick="goPage(1)">1</button>`;
+    if(currentPage > 3) btns += `<span style="padding:0 4px;color:var(--muted)">...</span>`;
+    for(let p=Math.max(2,currentPage-1);p<=Math.min(totalPages-1,currentPage+1);p++)
+      btns += `<button class="${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+    if(currentPage < totalPages-2) btns += `<span style="padding:0 4px;color:var(--muted)">...</span>`;
+    btns += `<button class="${currentPage===totalPages?'active':''}" onclick="goPage(${totalPages})">${totalPages}</button>`;
+  }
+  pag.innerHTML = btns;
+}
+
+function goPage(p){ currentPage = p; renderItemsTable(); }
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ══════════════════════════════════════════════
+// ADD / EDIT MODAL
+// ══════════════════════════════════════════════
+function openAddModal(){
+  editingCode = null;
+  document.getElementById('modalTitle').textContent = '➕ إضافة عنصر جديد';
+  ['code','type','facility','sheet','section','weight','location','box_no','notes'].forEach(f => {
+    const el = document.getElementById('f_'+f);
+    if(el) el.value = '';
+  });
+  document.getElementById('itemModal').classList.add('open');
+}
+
+function openEditModal(code){
+  const data = getData();
+  const item = data.find(it => it.code === code);
+  if(!item) return;
+  editingCode = code;
+  document.getElementById('modalTitle').textContent = '✏️ تعديل: ' + code;
+  document.getElementById('f_code').value = item.code||'';
+  document.getElementById('f_type').value = item.type||'بودرة';
+  document.getElementById('f_facility').value = item.facility||'';
+  document.getElementById('f_sheet').value = item.sheet||'';
+  document.getElementById('f_section').value = item.section||'';
+  document.getElementById('f_weight').value = item.weight||'';
+  document.getElementById('f_location').value = item.location||'';
+  document.getElementById('f_box_no').value = item.box_no||'';
+  document.getElementById('f_notes').value = item.notes||'';
+  document.getElementById('itemModal').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('itemModal').classList.remove('open'); }
+
+function saveItem(){
+  const code = document.getElementById('f_code').value.trim();
+  if(!code){ showToast('❌ الكود مطلوب'); return; }
+  const newItem = {
+    code,
+    type: document.getElementById('f_type').value,
+    facility: document.getElementById('f_facility').value.trim(),
+    sheet: document.getElementById('f_sheet').value.trim(),
+    section: document.getElementById('f_section').value.trim(),
+    weight: document.getElementById('f_weight').value.trim(),
+    location: document.getElementById('f_location').value.trim(),
+    box_no: document.getElementById('f_box_no').value.trim(),
+    notes: document.getElementById('f_notes').value.trim(),
+  };
+  const data = getData();
+  if(editingCode){
+    const idx = data.findIndex(it => it.code === editingCode);
+    if(idx !== -1) data[idx] = newItem;
+  } else {
+    if(data.find(it => it.code === code)){ showToast('❌ الكود موجود بالفعل'); return; }
+    data.push(newItem);
+  }
+  saveData(data);
+  closeModal();
+  renderItemsTable();
+  renderDashboard();
+  populateFilters();
+  showToast(editingCode ? '✅ تم تعديل العنصر' : '✅ تم إضافة العنصر');
+}
+
+// ══════════════════════════════════════════════
+// DELETE
+// ══════════════════════════════════════════════
+function confirmDelete(code){
+  showConfirm('🗑️','تأكيد الحذف',`هل تريد حذف العنصر "${code}"؟ لا يمكن التراجع.`, () => {
+    const data = getData().filter(it => it.code !== code);
+    saveData(data);
+    renderItemsTable();
+    renderDashboard();
+    showToast('🗑️ تم حذف العنصر');
+  });
+}
+
+// ══════════════════════════════════════════════
+// CHECKLISTS EDITOR
+// ══════════════════════════════════════════════
+function renderClTabs(){
+  const tabs = document.getElementById('clTabs');
+  tabs.innerHTML = Object.entries(CATEGORY_LABELS).map(([k,v]) =>
+    `<div class="cl-tab ${k===currentClType?'active':''}" onclick="switchClType('${k}')">${v}</div>`
+  ).join('');
+}
+
+function switchClType(type){ currentClType = type; renderClTabs(); renderClItems(); }
+
+function renderClItems(){
+  const cl = getChecklists();
+  const items = cl[currentClType] || [];
+  const container = document.getElementById('clItems');
+  container.innerHTML = items.map((text, i) => `
+    <div class="cl-item" id="cli-${i}">
+      <span class="cl-num">${i+1}</span>
+      <input type="text" value="${esc(text)}" onchange="updateClItem(${i}, this.value)" id="cl-input-${i}">
+      <button class="del-cl" onclick="deleteClItem(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function updateClItem(idx, val){
+  const cl = getChecklists();
+  if(!cl[currentClType]) return;
+  cl[currentClType][idx] = val;
+  localStorage.setItem(CL_KEY, JSON.stringify(cl));
+}
+
+function deleteClItem(idx){
+  const cl = getChecklists();
+  cl[currentClType].splice(idx, 1);
+  localStorage.setItem(CL_KEY, JSON.stringify(cl));
+  renderClItems();
+}
+
+function addClItem(){
+  const input = document.getElementById('newClItem');
+  const val = input.value.trim();
+  if(!val){ showToast('❌ اكتب البند أولاً'); return; }
+  const cl = getChecklists();
+  if(!cl[currentClType]) cl[currentClType] = [];
+  cl[currentClType].push(val);
+  localStorage.setItem(CL_KEY, JSON.stringify(cl));
+  input.value = '';
+  renderClItems();
+  showToast('✅ تم إضافة البند');
+}
+
+function saveChecklists(){
+  // Collect current values from inputs
+  const cl = getChecklists();
+  const items = cl[currentClType] || [];
+  items.forEach((_, i) => {
+    const inp = document.getElementById('cl-input-'+i);
+    if(inp) items[i] = inp.value;
+  });
+  cl[currentClType] = items;
+  localStorage.setItem(CL_KEY, JSON.stringify(cl));
+  showToast('✅ تم حفظ بنود الفحص');
+}
+
+function resetChecklists(){
+  showConfirm('↩️','استعادة الافتراضي',`هل تريد استعادة بنود الفحص الافتراضية لـ "${CATEGORY_LABELS[currentClType]}"؟`, () => {
+    const cl = getChecklists();
+    cl[currentClType] = JSON.parse(JSON.stringify(ORIGINAL_CHECKLISTS[currentClType]));
+    localStorage.setItem(CL_KEY, JSON.stringify(cl));
+    renderClItems();
+    showToast('✅ تم استعادة البنود الافتراضية');
+  });
+}
+
+// ══════════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════════
+function exportCurrentView(){
+  const filtered = getFilteredData();
+  const rows = [['الكود','النوع','الموقع','الشيت','القسم','المكان','الوزن','رقم الصندوق','ملاحظات']];
+  filtered.forEach(it => rows.push([it.code,it.type,it.facility,it.sheet,it.section,it.location,it.weight,it.box_no,it.notes]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:16},{wch:14},{wch:22},{wch:22},{wch:20},{wch:30},{wch:8},{wch:10},{wch:30}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'العناصر');
+  XLSX.writeFile(wb, 'جرد_مكافحة_الحريق.xlsx');
+}
+
+function exportAllItems(){
+  const data = getData();
+  const rows = [['الكود','النوع','الموقع','الشيت','القسم','المكان','الوزن','رقم الصندوق','ملاحظات']];
+  data.forEach(it => rows.push([it.code,it.type,it.facility,it.sheet,it.section,it.location,it.weight,it.box_no,it.notes]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:16},{wch:14},{wch:22},{wch:22},{wch:20},{wch:30},{wch:8},{wch:10},{wch:30}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'كل العناصر');
+  XLSX.writeFile(wb, 'جرد_كامل_مكافحة_الحريق.xlsx');
+  showToast('✅ تم تصدير الملف');
+}
+
+function exportChecklists(){
+  const cl = getChecklists();
+  const wb = XLSX.utils.book_new();
+  Object.entries(cl).forEach(([key, items]) => {
+    const rows = [[CATEGORY_LABELS[key]||key], ['م','بند الفحص']];
+    items.forEach((item, i) => rows.push([i+1, item]));
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:4},{wch:60}];
+    XLSX.utils.book_append_sheet(wb, ws, CATEGORY_LABELS[key]||key);
+  });
+  XLSX.writeFile(wb, 'بنود_الفحص.xlsx');
+  showToast('✅ تم تصدير بنود الفحص');
+}
+
+function exportBackup(){
+  const backup = { data: getData(), checklists: getChecklists(), exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'backup_fire_system_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('✅ تم تصدير النسخة الاحتياطية');
+}
+
+function importBackup(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if(!backup.data || !backup.checklists) throw new Error('ملف غير صالح');
+      showConfirm('📥','تأكيد الاستيراد','سيتم استبدال كل البيانات الحالية بالنسخة الاحتياطية. هل تريد المتابعة؟', () => {
+        saveData(backup.data);
+        localStorage.setItem(CL_KEY, JSON.stringify(backup.checklists));
+        renderDashboard();
+        populateFilters();
+        renderItemsTable();
+        renderClTabs();
+        renderClItems();
+        showToast('✅ تم استيراد البيانات بنجاح');
+      });
+    } catch(err) {
+      showToast('❌ ملف غير صالح');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ══════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════
+function changePwd(){
+  const old = document.getElementById('oldPwd').value;
+  const nw = document.getElementById('newPwd').value;
+  const conf = document.getElementById('confirmPwd').value;
+  if(old !== getAdminPwd()){ showToast('❌ كلمة المرور الحالية غلط'); return; }
+  if(!nw || nw.length < 4){ showToast('❌ كلمة المرور الجديدة قصيرة جداً (4 أحرف على الأقل)'); return; }
+  if(nw !== conf){ showToast('❌ كلمة المرور الجديدة غير متطابقة'); return; }
+  localStorage.setItem(ADMIN_PWD_KEY, nw);
+  document.getElementById('oldPwd').value = '';
+  document.getElementById('newPwd').value = '';
+  document.getElementById('confirmPwd').value = '';
+  showToast('✅ تم تغيير كلمة المرور بنجاح');
+}
+
+function confirmResetAll(){
+  showConfirm('⚠️','إعادة ضبط كاملة','سيتم حذف كل التعديلات والعودة للبيانات الأصلية. هل أنت متأكد؟', () => {
+    localStorage.removeItem(DATA_KEY);
+    localStorage.removeItem(CL_KEY);
+    renderDashboard();
+    populateFilters();
+    renderItemsTable();
+    renderClTabs();
+    renderClItems();
+    showToast('✅ تم إعادة ضبط البيانات');
+  });
+}
+
+// ══════════════════════════════════════════════
+// CONFIRM DIALOG
+// ══════════════════════════════════════════════
+function showConfirm(ico, title, msg, cb){
+  document.getElementById('confirmIco').textContent = ico;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  confirmCallback = cb;
+  document.getElementById('confirmOverlay').classList.add('open');
+}
+function closeConfirm(){ document.getElementById('confirmOverlay').classList.remove('open'); confirmCallback = null; }
+document.getElementById('confirmOkBtn').onclick = function(){ if(confirmCallback) confirmCallback(); closeConfirm(); };
+
+// ══════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Close modal on overlay click
+document.getElementById('itemModal').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+document.getElementById('confirmOverlay').addEventListener('click', function(e){ if(e.target===this) closeConfirm(); });
+</script>
+</body>
+</html>
